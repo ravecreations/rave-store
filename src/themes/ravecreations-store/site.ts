@@ -4,7 +4,7 @@ export const MAIN_SITE_URL = 'https://ravecreations.art';
 export const MAIN_SITE_LINKS = [
   { text: 'Home', href: `${MAIN_SITE_URL}/` },
   { text: 'About', href: `${MAIN_SITE_URL}/about` },
-  { text: 'Journal', href: `${MAIN_SITE_URL}/journal` },
+  { text: 'Journal', href: `${MAIN_SITE_URL}/blog` },
   { text: 'FAQ', href: `${MAIN_SITE_URL}/faq` },
   { text: 'Contact', href: `${MAIN_SITE_URL}/contact` },
 ] as const;
