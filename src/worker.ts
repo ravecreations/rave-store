@@ -51,7 +51,7 @@ async function runScheduledSweeps(): Promise<void> {
 }
 
 export default {
-  fetch: handle,
+  fetch: handle as unknown as ExportedHandler<Cloudflare.Env>['fetch'],
 
   // Each sweep catches its own errors, so one failing job never strands the
   // others. waitUntil keeps the invocation alive for the whole pass.
@@ -61,3 +61,4 @@ export default {
   // Bindings are reached through the `cloudflare:workers` env import (as every
   // other module here does), so the handler itself needs no Env generic.
 } satisfies ExportedHandler<Cloudflare.Env>;
+

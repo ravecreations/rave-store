@@ -66,13 +66,26 @@ const shopHref = catalogPath(Astro.locals.settings?.homePage);
 
   {
     lines.length === 0 ? (
-      <p class="text-muted">
-        Your cart is empty.{' '}
-        <a href={shopHref} class="border-b border-brand text-brand">
-          Continue shopping
-        </a>
-        .
-      </p>
+      <div class="rounded-2xl border border-line bg-surface/40 p-8 text-center sm:p-12">
+        <p class="font-serif text-2xl tracking-tight">Your cart is empty.</p>
+        <p class="mx-auto mt-2 max-w-sm text-sm text-muted">
+          Looking for custom photo lithophanes, upcycled silk bracelets, or 3D art pieces? Explore our handcrafted studio catalog.
+        </p>
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <a
+            href={shopHref}
+            class="rounded-full bg-brand px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-on-brand transition hover:opacity-90"
+          >
+            Continue shopping
+          </a>
+          <a
+            href="https://ravecreations.art"
+            class="rounded-full border border-line px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-foreground transition hover:border-brand hover:text-brand"
+          >
+            Studio Showcase
+          </a>
+        </div>
+      </div>
     ) : (
       <Fragment>
         {/* Items — a reflowing list (not a rigid table) so it works on mobile:
