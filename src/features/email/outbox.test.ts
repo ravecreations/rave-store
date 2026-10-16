@@ -7,7 +7,11 @@ import type { D1Database } from '@cloudflare/workers-types';
 // the order batch) and the wrangler integration gate.
 vi.mock('./index', () => ({ getEmailProvider: vi.fn() }));
 vi.mock('../orders/db', () => ({ getOrder: vi.fn(), listOrderItemsWithImages: vi.fn() }));
-vi.mock('../settings/db', () => ({ getStoreSettings: vi.fn() }));
+vi.mock('../settings/db', () => ({
+  getStoreSettings: vi.fn(),
+  getSetting: vi.fn(async () => null),
+  setSetting: vi.fn(async () => {}),
+}));
 vi.mock('./orderConfirmation', () => ({
   orderConfirmationEmail: vi.fn(() => ({ to: 'c@x', subject: 'r', html: '', text: '' })),
   orderNotificationEmail: vi.fn(() => ({ to: 'o@x', subject: 'n', html: '', text: '' })),
