@@ -42,23 +42,23 @@
     "db:seed:storefront-states": "bash scripts/seed-storefront-states.sh"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^14.3.4",
-    "astro": "^7.3.8",
-    "markdown-it": "^15.0.2",
+    "@astrojs/cloudflare": "^14.4.0",
+    "astro": "^7.4.0",
+    "markdown-it": "^15.0.3",
     "stripe": "^23.0.0",
     "uqr": "^0.1.3"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "@cloudflare/workers-types": "^5.20261013.1",
+    "@cloudflare/workers-types": "^5.20261018.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.6.5",
     "miniflare": "^4.20260730.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11",
-    "wrangler": "^4.149.0"
+    "vitest": "^4.1.12",
+    "wrangler": "^4.151.1"
   },
   "overrides": {
     "miniflare": {
