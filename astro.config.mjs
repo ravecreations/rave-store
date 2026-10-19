@@ -39,6 +39,7 @@ const themeStamp = {
 };
 
 export default defineConfig({
+  server: { port: 4336 },
   output: 'server',
   integrations: [themeStamp],
   // Replaced by the equivalent middleware guard so the bearer-capability
