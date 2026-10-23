@@ -3,36 +3,20 @@ export const prerender = false;
 import { env } from 'cloudflare:workers';
 import Layout from '../../layouts/Layout.astro';
 import { verifyConfiguredTurnstile, TURNSTILE_FIELD } from '../../features/auth/turnstile';
-import { signSession, verifySession } from '../../features/auth/session';
-import { adminCredential } from '../../features/auth/admin';
 import { getSecret } from '../../features/secrets/store';
 import Turnstile from '../../features/auth/Turnstile.astro';
+import { tenantApiFetch } from '../../features/auth/tenant-api';
 
-// Credential = the PBKDF2 hash set in D1 by the setup wizard.
-const cred = await adminCredential(env.DB);
-// No password set yet → nothing to log into; send them to the setup wizard (open
-// during bootstrap) to create one.
-if (!cred.enabled) return Astro.redirect('/admin/setup', 303);
+let error = Astro.url.searchParams.get('signin') === 'invalid'
+  ? 'That sign-in link is invalid or has expired. Request a new one.'
+  : '';
+let sent = false;
 
-// Sessions are signed with AUTH_SECRET (high-entropy), bound to the credential via a
-// tag so rotation invalidates them. Fall back to the credential as the key only when
-// AUTH_SECRET isn't set (degrades to the old behaviour rather than breaking login).
-const signingKey = env.AUTH_SECRET || cred.tagSource;
-
-const now = Date.now() / 1000;
-// Already signed in → straight to the admin.
-if (
-  await verifySession(Astro.cookies.get('admin_session')?.value ?? null, signingKey, cred.tagSource, now)
-) {
-  return Astro.redirect('/admin', 303);
-}
-
-const SESSION_TTL = 7 * 24 * 3600; // 7 days
-let error = '';
+if (Astro.locals.adminAuthenticated) return Astro.redirect('/admin', 303);
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
-  // Bot challenge (if enabled in Settings): verify with the vault secret.
+  const email = String(form.get('email') ?? '').trim();
   const turnstileEnabled = Astro.locals.settings?.turnstileEnabled === true;
   const tsSecret = turnstileEnabled
     ? await getSecret(env.DB, 'turnstile_secret_key')
@@ -43,29 +27,59 @@ if (Astro.request.method === 'POST') {
     tsSecret,
     Astro.request.headers.get('CF-Connecting-IP'),
   );
-  const pwOk = await cred.verify(form.get('password')?.toString() ?? '');
 
   if (!tsOk) {
     error = 'Verification failed — please try again.';
-  } else if (!pwOk) {
-    error = 'Incorrect password.';
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) {
+    error = 'Enter a valid email address.';
   } else {
-    const token = await signSession(signingKey, cred.tagSource, SESSION_TTL, now);
-    Astro.cookies.set('admin_session', token, {
-      httpOnly: true,
-      secure: Astro.url.protocol === 'https:',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: SESSION_TTL,
-    });
-    return Astro.redirect('/admin', 303);
+    try {
+      const forwarded = new Request(Astro.request.url, {
+        method: 'POST',
+        headers: new Headers(Astro.request.headers),
+      });
+      const response = await tenantApiFetch(
+        forwarded,
+        env,
+        '/admin/v1/auth/magic-link',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        },
+      );
+      sent = response.status === 202;
+      if (!sent) error = response.status === 503
+        ? 'Sign-in is temporarily unavailable. Please try again later.'
+        : 'Unable to send a sign-in link. Please try again.';
+    } catch {
+      error = 'Sign-in is temporarily unavailable. Please try again later.';
+    }
   }
 }
+
 ---
 
 <Layout title="Admin login">
   <div class="mx-auto max-w-sm py-10">
-    <h1 class="mb-6 text-2xl font-bold">Admin sign in</h1>
+    <h1 class="mb-2 text-2xl font-bold">Admin sign in</h1>
+    <p class="mb-6 text-sm text-gray-500">Enter your tenant account email and we’ll send a one-time sign-in link.</p>
+
+    {
+      sent && (
+        <p class="mb-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          If this email has access to the store, a sign-in link is on its way.
+        </p>
+      )
+    }
+
+    {
+      Astro.locals.authServiceUnavailable && !error && (
+        <p class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          Tenant sign-in is not configured or is temporarily unavailable.
+        </p>
+      )
+    }
 
     {
       error && (
@@ -77,13 +91,14 @@ if (Astro.request.method === 'POST') {
 
     <form method="POST" action="/admin/login" class="space-y-4">
       <label class="block text-sm">
-        <span class="mb-1 block font-medium">Password</span>
+        <span class="mb-1 block font-medium">Email</span>
         <input
-          type="password"
-          name="password"
+          type="email"
+          name="email"
           required
           autofocus
-          autocomplete="current-password"
+          autocomplete="email"
+          maxlength="320"
           class="w-full rounded-md border border-gray-200 px-3 py-2"
         />
       </label>
@@ -96,8 +111,9 @@ if (Astro.request.method === 'POST') {
         type="submit"
         class="w-full rounded-md bg-brand px-4 py-2.5 font-medium text-white hover:bg-brand-hover"
       >
-        Sign in
+        Email me a sign-in link
       </button>
     </form>
   </div>
 </Layout>
+---

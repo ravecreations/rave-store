@@ -18,9 +18,8 @@ import {
   PRODUCT_STOCK_OPTIONS,
 } from '../../../features/products/filter';
 
-// Auth: /admin + /api/admin are gated by src/middleware.ts. The admin password is
-// set in the first-run setup wizard (hashed in D1); Cloudflare Access at the edge
-// is the recommended production layer — see README → Admin auth.
+// Auth: /admin + /api/admin are gated by shared tenant identity and authorization
+// checks in src/middleware.ts; see README → Admin auth.
 
 const sort = Astro.url.searchParams.get('sort');
 const dir = Astro.url.searchParams.get('dir');

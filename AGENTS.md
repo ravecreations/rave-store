@@ -97,7 +97,7 @@ src/
     shipping/  calculator (zones + ShippingCalculator port)
     storage/   provider (port) · r2 · index (factory)
     email/     provider (port) · resend · cloudflare · index (factory) · orderConfirmation
-    auth/      access (CF Access JWT) · session (admin login cookie) · turnstile · Turnstile.astro
+    auth/      tenant-api · tenant-identity · customer session · turnstile · Turnstile.astro
     catalog/   serialize · http  (public API shapes for /api/products)
     cart/ categories/ customers/ media/ pages/
   pages/
@@ -152,7 +152,7 @@ To swap/add a provider, write one adapter file + wire the factory:
    currency math (handles JPY/BHD, not just 2-decimal).
 8. **Tests stay pure.** A `*.test.ts` must NOT import `cloudflare:workers` (vitest
    can't load it). Keep DB/env logic out of unit-tested modules — pass `db` and
-   secrets as params (see `lightning/rate.ts`, `auth/session.ts`).
+   secrets as params (see `lightning/rate.ts`, `auth/tenant-identity.ts`).
 9. **Public routes are plural for browsable collections** — `/products/<slug>`,
    `/categories/<slug>` — matching the admin (`/admin/products`), the JSON API
    (`/api/products/<slug>`), and the feature directories. Token-addressed single

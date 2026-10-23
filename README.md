@@ -102,7 +102,7 @@ bun run provision:local -- --seed
 bun run dev                        # http://localhost:4321
 ```
 
-Storefront is at `/`, admin at `/admin` — first visit lands on the **setup wizard**. There are no provider secrets to fill in by hand: payment/email/Turnstile keys are pasted in **Admin → Settings** and stored encrypted in D1 (see [Settings](#settings)). Granular scripts also exist (`db:migrate`, `db:seed`), `bun run preview` runs the built worker in prod-mode (admin gate active), and `bun run destroy:local` resets the local store.
+Storefront is at `/`, admin at `/admin`. `astro dev` bypasses the production gate and opens the local setup wizard; a production preview requires the shared R5 Industries tenant identity and authorization configuration before staff can sign in. There are no provider secrets to fill in by hand: payment/email/Turnstile keys are pasted in **Admin → Settings** and stored encrypted in D1 (see [Settings](#settings)). Granular scripts also exist (`db:migrate`, `db:seed`), `bun run preview` runs the built worker in prod-mode (admin gate active), and `bun run destroy:local` resets the local store.
 
 ### Tests
 
@@ -112,7 +112,7 @@ bun run test:watch
 bun run test:d1   # fresh migrations + seed + built Worker against isolated D1
 ```
 
-Covers the pure functions — `slugify`, the FTS search sanitizer + edit-distance, `parseProductForm`, image validation, cart counting, reservation target aggregation, the order-number scheme, the Access-JWT verifier, pagination clamping, and the whitelisted `orderByClause` sort builders (the SQL-injection boundary for sortable tables). `bun run test:d1` adds clean-room D1 gates for reservation concurrency/release/settlement/legacy compatibility, then boots the production Worker against an isolated database and runs a demo checkout through paid-order settlement and confirmation. `bun run verify` runs both suites, full Astro diagnostics, the production build, and the MCP typecheck/deployment dry run.
+Covers the pure functions — `slugify`, the FTS search sanitizer + edit-distance, `parseProductForm`, image validation, cart counting, reservation target aggregation, the order-number scheme, the tenant identity request adapter, pagination clamping, and the whitelisted `orderByClause` sort builders (the SQL-injection boundary for sortable tables). `bun run test:d1` adds clean-room D1 gates for reservation concurrency/release/settlement/legacy compatibility, then boots the production Worker against an isolated database and runs a demo checkout through paid-order settlement and confirmation. `bun run verify` runs both suites, full Astro diagnostics, the production build, and the MCP typecheck/deployment dry run.
 
 ### Testing payments locally
 
@@ -132,7 +132,7 @@ The order shows up in `/admin` (and in D1: `bunx wrangler d1 execute minshop-db 
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/ddyy/minshop)
 
-Forks the repo, provisions D1 plus separate R2 buckets for public images (`minshop-images`) and private deliverables (`minshop-files`), applies migrations, and deploys the free-plan default. The files bucket must stay private: never enable r2.dev or attach a custom domain. Then finish onboarding at `/admin/setup` (below). Cloudflare Images, semantic search, and Cloudflare Email are opt-in; their bindings are commented in `wrangler.jsonc`.
+Forks the repo, provisions D1 plus separate R2 buckets for public images (`minshop-images`) and private deliverables (`minshop-files`), applies migrations, and deploys the free-plan default. The files bucket must stay private: never enable r2.dev or attach a custom domain. Before finishing onboarding at `/admin/setup`, register the site's verified domain and owner membership with the R5 Industries tenant service, then configure `R5I_TENANT_PUBLIC_KEY`. Cloudflare Images, semantic search, and Cloudflare Email are opt-in; their bindings are commented in `wrangler.jsonc`.
 
 **Fields the deploy form shows:**
 
@@ -175,27 +175,21 @@ openssl rand -base64 32 | bunx wrangler secret put SECRETS_KEK   # encrypts the 
 bun run deploy                     # migrate, build, deploy, then purge shared cache if enabled
 ```
 
-Then open the site — it funnels to the **setup wizard**: set the admin password (required to finish; until then `/admin/setup` is open, so do it right away or front `/admin` with Access), then paste your payment keys in **Settings → Payments**. Finally point a **production Stripe webhook** at `https://<your-host>/api/webhook/stripe` (events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, and `charge.refunded`; async success fulfils delayed methods, failure/expiry releases held inventory, and `charge.refunded` keeps refunds made in the Stripe Dashboard — including partial ones — in sync with your order totals) and paste its `whsec_…` signing secret in the same card. Tear an instance down with `bun run destroy:cf <slug>`; reset its data in place with `bun run reset:remote`.
+Then open the site. Before staff can use `/admin`, register its verified hostname as a tenant domain in R5 Industries, add each staff member to that tenant, and set the origin-bound `R5I_TENANT_PUBLIC_KEY` in `.dev.vars` locally or the Worker secret store in production. After signing in with a one-time email link, the operator can finish the store setup and paste payment keys in **Settings → Payments**. Finally point a **production Stripe webhook** at `https://<your-host>/api/webhook/stripe` (events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, and `charge.refunded`; async success fulfils delayed methods, failure/expiry releases held inventory, and `charge.refunded` keeps refunds made in the Stripe Dashboard — including partial ones — in sync with your order totals) and paste its `whsec_…` signing secret in the same card. Tear an instance down with `bun run destroy:cf <slug>`; reset its data in place with `bun run reset:remote`.
 
 ## Admin auth
 
-Both `/admin` **and** `/api/admin/*` are gated by [`src/middleware.ts`](src/middleware.ts). You authenticate one of two ways:
+Both `/admin/*` and `/api/admin/*` require a verified session from R5 Industries Identity and an owner or manager decision from R5 Industries Authorization. Staff sign in at `/admin/login` with a one-time email link; no site-local admin password or shared staff password is stored in this shop. The API Worker validates the tenant using the website's verified domain or its origin-bound public key, then checks central tenant membership on every protected request. Sessions use a host-only `r5i_session` cookie on the store domain.
 
-- **Setup-wizard password (built-in).** On a fresh store the setup wizard at **`/admin/setup`** is reachable so you can create an admin password; it's stored as a PBKDF2 hash in D1 (there is **no `ADMIN_PASSWORD` env var**). The moment you save it the gate activates: `/admin` + `/api/admin` require sign-in at **`/admin/login`** (a form issuing an HMAC-signed, HttpOnly session cookie; `/api/admin` returns 401 instead of redirecting), and saving logs you in immediately. **First-run is open** — until a password exists, `/admin/setup` is publicly reachable, so set it promptly on a public deploy (or front `/admin` with Access, below).
-  - **Optional Turnstile** on the login form: enable it in **Admin → Settings → Bot protection** (toggle + sitekey, with the secret stored in the encrypted vault) to add Cloudflare's bot challenge before the password is checked. The same toggle also gates the customer account sign-in. Cloudflare's documented always-pass test keys work for local trials.
-- **Cloudflare Access (recommended for production).** Edge SSO/MFA, no app passwords, and it protects first-run setup too. In the Zero Trust dashboard add a **self-hosted application** covering **both** paths `your-host/admin` *and* `your-host/api/admin` (the API is a separate path — gating only `/admin` leaves the mutation endpoints open), add an identity provider (One-time PIN is enough), and an Allow policy for your email. Set both `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` in `wrangler.jsonc` vars; they are **required for Access mode** so the middleware can verify every JWT signature (zero-dependency, Web Crypto — see [`src/features/auth/access.ts`](src/features/auth/access.ts)). With either variable present, requests fail closed unless both are set and a valid assertion is supplied—including direct `*.workers.dev` requests with no header. (Use Access *or* the wizard password; if a password is set, password login takes precedence.)
+Before enabling staff login, register the site's exact HTTPS hostname with the R5 Industries tenant, issue a public tenant key restricted to that origin, and add staff as tenant members. Put the public selector in `R5I_TENANT_PUBLIC_KEY` in ignored `.dev.vars` for local Workers preview or the Worker secret store for deployment. This key only selects a tenant and validates the browser origin; it is not an authorization credential. Cross-account sites call `https://api.r5.industries`; same-account deployments may bind `API_SERVICE` to `r5i-api` to avoid the public hop.
 
-**Forgot the admin password?** The hash lives in your D1 database, so the store owner can always reset it — clearing it drops the store back into the open setup wizard:
+The Rave Store `/console` route adapts the shared auth gateway's callback to `/admin`. `/admin/setup` is protected by the same identity and authorization checks as the rest of the admin. `astro dev` continues to bypass the production gate for local UI work; customer accounts remain a separate local magic-link flow and still use `AUTH_SECRET`.
 
-```bash
-bun run admin:reset:remote   # deployed store  (or: bun run admin:reset for local)
-```
+Optional Turnstile on the local admin login form remains available from **Admin → Settings → Bot protection**. The shared gateway also rate-limits sign-in requests. Admin APIs return 401 for missing sessions and 403 for users without an owner or manager role. `AUTH_SECRET` continues to support customer accounts and signed cache purges; it is no longer part of staff authentication.
 
-Then reload `/admin/setup` and set a new one. (Same effect as running `DELETE FROM settings WHERE key='admin_password_hash';` in the Cloudflare dashboard → D1 console.) It requires Cloudflare account access, so it isn't a public reset — and if you run Cloudflare Access you're never locked out in the first place.
+The Worker applies native edge rate limits to anonymous sign-in POSTs (10/minute per store, route, and connecting client), checkout/invoice POSTs (20/minute), and cache-missing public searches (60/minute). Search input is normalized and capped at 200 characters before FTS or Workers AI sees it; instances that enable Workers Caching keep public catalog/search responses for up to 10 minutes. Webhooks and authenticated admin APIs are deliberately excluded; provider signatures and the admin gate protect those paths without disrupting legitimate retries or bulk administration. The limits are declared as `AUTH_RATE_LIMITER`, `CHECKOUT_RATE_LIMITER`, and `SEARCH_RATE_LIMITER` bindings in the provisioning template; existing manually maintained Wrangler configs need the same `ratelimits` block.
 
 Local dev (`astro dev`) bypasses the gate so you're never locked out. Don't make `/admin` a "secret" path — that's security-through-obscurity; the gate is what protects it.
-
-The Worker also applies native edge rate limits to anonymous login POSTs (10/minute per store, route, and connecting client), checkout/invoice POSTs (20/minute), and cache-missing public searches (60/minute). Search input is normalized and capped at 200 characters before FTS or Workers AI sees it; instances that enable Workers Caching keep public catalog/search responses for up to 10 minutes. Webhooks and authenticated admin APIs are deliberately excluded; provider signatures and the admin gate protect those paths without disrupting legitimate retries or bulk administration. The limits are declared as `AUTH_RATE_LIMITER`, `CHECKOUT_RATE_LIMITER`, and `SEARCH_RATE_LIMITER` bindings in the provisioning template; existing manually maintained Wrangler configs need the same `ratelimits` block.
 
 ## Caching
 
@@ -339,7 +333,7 @@ src/
   store.config.ts            per-store build-time overrides
   layouts/Layout.astro
   features/
-    auth/       admin, customer sessions, Access, Turnstile
+    auth/       tenant admin identity, customer sessions, Turnstile
     media/      the shared file library — the only feature that deletes objects
     pages/      Markdown pages: rendering, slugs, layout presets, save/media sync
     products/   catalog data, forms, inventory, image handling

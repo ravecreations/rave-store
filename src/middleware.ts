@@ -1,10 +1,13 @@
 import { defineMiddleware } from 'astro:middleware';
 import type { APIContext, MiddlewareNext } from 'astro';
 import { env } from 'cloudflare:workers';
-import { verifyAccessJwt } from './features/auth/access';
-import { accessGateDecision } from './features/auth/accessGate';
-import { verifySession } from './features/auth/session';
-import { adminCredential } from './features/auth/admin';
+import { tenantApiFetch } from './features/auth/tenant-api';
+import {
+  authorizeTenantAdmin,
+  getTenantRuntimeSession,
+  type TenantAuthorizationDecision,
+  type TenantRuntimeSession,
+} from './features/auth/tenant-identity';
 import {
   getStoreSettings,
   parseStoreSettings,
@@ -29,31 +32,9 @@ import { normalizeSearchQuery } from './features/search/query';
 import { isForbiddenFormOrigin } from './features/auth/formOrigin';
 
 /**
- * Admin auth gate. Protects BOTH the admin UI (`/admin/*`) and the admin API
- * (`/api/admin/*`) — the API is a separate path, so gating only `/admin` would
- * leave the mutation endpoints open.
- *
- * Precedence:
- *   1. Local dev (`astro dev`) → always allowed (no Access in front of localhost).
- *   2. Admin password set in D1 (via the setup wizard) → form login at
- *      `/admin/login` (password + optional Turnstile) that issues a signed session
- *      cookie; protected requests without a valid cookie are redirected to the
- *      login form (APIs get 401).
- *   3. Cloudflare Access assertion present → ALWAYS verify the JWT signature
- *      against the team JWKS (forge-proof, even against direct *.workers.dev
- *      hits). Access mode REQUIRES CF_ACCESS_TEAM_DOMAIN + CF_ACCESS_AUD; without
- *      both, an assertion is rejected (403) rather than trusted — a bare header is
- *      forgeable at the public origin, so trust-on-presence is a bypass.
- *   4. BOOTSTRAP (first run): no password yet and no Access → the setup wizard
- *      (`/admin/setup`) is OPEN so the operator can create the password; the rest
- *      of /admin bounces there. The wizard auto-logs-you-in on save, which trips
- *      step 2 and closes the window. Set the password promptly, or front /admin
- *      with Access, on a public deploy.
- *
- * Cloudflare Access is the recommended production protection (edge SSO/MFA); the
- * wizard-set password is the built-in alternative. See README → Admin auth. JWT
- * verification lives in features/auth/access.ts; session signing in
- * features/auth/session.ts.
+ * Admin auth gate. The shared API gateway validates the host-only identity session and the
+ * authorization service checks the store-management action for the resolved tenant.
+ * Local `astro dev` remains open so storefront work does not need a tenant registration.
  */
 function isProtected(pathname: string): boolean {
   return (
@@ -155,70 +136,67 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
     }
   }
 
+  if (
+    path === '/admin/v1/auth/magic-link' ||
+    path === '/admin/v1/auth/verify' ||
+    path === '/admin/v1/auth/logout'
+  ) {
+    return tenantApiFetch(context.request, env);
+  }
+
   if (!isProtected(context.url.pathname)) return next();
 
-  // 1. Localhost dev has no Access edge — don't lock yourself out.
+  // Local Astro development has no deployed tenant registry or identity service.
   if (import.meta.env.DEV) return next();
 
-  // 2. Steady state: an admin password is set (via the setup wizard) → require a
-  //    valid signed session. Checked before the Access header so it can't be
-  //    bypassed by forging it.
-  const cred = await adminCredential(env.DB);
-  if (cred.enabled) {
-    // The login page itself must be reachable unauthenticated (to log in).
+  const preserveIdentityCookies = (response: Response): void => {
+    const cookies = response.headers.getSetCookie();
+    if (cookies.length > 0) {
+      context.locals.identitySetCookies = [
+        ...(context.locals.identitySetCookies ?? []),
+        ...cookies,
+      ];
+    }
+  };
+
+  let session: TenantRuntimeSession;
+  try {
+    session = await getTenantRuntimeSession(context.request, env, preserveIdentityCookies);
+  } catch {
+    if (path === '/admin/login') {
+      context.locals.authServiceUnavailable = true;
+      return next();
+    }
+    return new Response('Identity service unavailable.', { status: 503 });
+  }
+
+  if (!session.authenticated || !session.user) {
     if (path === '/admin/login') return next();
-    const session = context.cookies.get('admin_session')?.value ?? null;
-    // Sign/verify with AUTH_SECRET (high-entropy key); the credential is the bound tag.
-    const signingKey = env.AUTH_SECRET || cred.tagSource;
-    if (await verifySession(session, signingKey, cred.tagSource, Date.now() / 1000)) return next();
-    // Not authenticated: humans go to the login form, API callers get 401.
     if (path.startsWith('/api/')) {
       return new Response('Authentication required.', { status: 401 });
     }
     return context.redirect('/admin/login', 303);
   }
 
-  // 3. Cloudflare Access. The edge injects a signed JWT into the origin request.
-  //    We ALWAYS verify its signature (against the team JWKS) — the header is
-  //    otherwise trivially forgeable against the public *.workers.dev origin,
-  //    which bypasses the edge Access app bound to your custom hostname. So
-  //    Access mode REQUIRES CF_ACCESS_TEAM_DOMAIN + CF_ACCESS_AUD; without both we
-  //    fail closed rather than trust an unverifiable header.
-  const access = accessGateDecision(
-    context.request.headers.get('Cf-Access-Jwt-Assertion'),
-    env.CF_ACCESS_TEAM_DOMAIN,
-    env.CF_ACCESS_AUD,
-  );
-  if (access.action === 'deny') {
-    return new Response(access.message, { status: 403 });
-  }
-  if (access.action === 'verify') {
-    let identity = null;
-    try {
-      identity = await verifyAccessJwt(access.token, {
-        teamDomain: access.teamDomain,
-        aud: access.aud,
-      });
-    } catch {
-      identity = null; // JWKS unreachable etc. → fail closed
-    }
-    if (identity) {
-      context.locals.adminEmail = identity.email;
-      return next();
-    }
-    return new Response('Invalid Access token.', { status: 403 });
+  let authorization: TenantAuthorizationDecision;
+  try {
+    authorization = await authorizeTenantAdmin(context.request, env, preserveIdentityCookies);
+  } catch {
+    return new Response('Authorization service unavailable.', { status: 503 });
   }
 
-  // 4. Bootstrap (first run): no admin password and no Access configuration. The
-  //    setup wizard is open so the operator can create the password — which trips
-  //    step 2 and locks the door. Everything else under /admin bounces to setup;
-  //    admin APIs get 401. (Set the password promptly, or front /admin with
-  //    Cloudflare Access, to close this window. See README → Admin auth.)
-  if (path === '/admin/setup') return next();
-  if (path.startsWith('/api/')) {
-    return new Response('Admin not set up yet — complete /admin/setup first.', { status: 401 });
+  if (!authorization.allowed || !['owner', 'manager'].includes(authorization.role ?? '')) {
+    if (path === '/admin/login') {
+      context.locals.authServiceUnavailable = false;
+      return next();
+    }
+    return new Response('Access denied.', { status: 403 });
   }
-  return context.redirect('/admin/setup', 303);
+
+  context.locals.adminEmail = session.user.email;
+  context.locals.adminAuthenticated = true;
+  if (path === '/admin/login') return context.redirect('/admin', 303);
+  return next();
 }
 
 async function route(context: APIContext, next: MiddlewareNext): Promise<Response> {
@@ -230,6 +208,17 @@ async function route(context: APIContext, next: MiddlewareNext): Promise<Respons
         status: 403,
       })
     : await gate(context, next);
+
+  const identityCookies = context.locals.identitySetCookies ?? [];
+  if (identityCookies.length > 0) {
+    const headers = new Headers(response.headers);
+    for (const cookie of identityCookies) headers.append('Set-Cookie', cookie);
+    response = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  }
 
   // Workers Caching heuristically stores headerless responses, so make every
   // response explicit: only allowlisted public successes/301s are shared.

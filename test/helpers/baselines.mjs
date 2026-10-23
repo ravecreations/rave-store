@@ -33,9 +33,9 @@ const REQUEST_TIMEOUT_MS = 30_000;
  *   /account, /account/login          baseline their 303. Accounts require a
  *                                     configured email provider in the encrypted
  *                                     vault, which the fixture cannot mint.
- *   /admin/login                      baselines its 303 to /admin/setup, which
- *                                     is where it goes until a credential hash
- *                                     exists.
+ *   /admin/login                      baselines the shared-identity sign-in form.
+ *                                     A production preview without a configured
+ *                                     tenant key shows the unavailable notice.
  *
  * Those four still render the shared shell in production, so they stay on the
  * manual visual-review list. The redirect itself is worth pinning: a changed

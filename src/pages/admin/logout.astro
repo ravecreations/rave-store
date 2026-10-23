@@ -1,7 +1,28 @@
 ---
 export const prerender = false;
-// Clears the admin session cookie and returns to the login form. Reached only
-// when already authenticated (it's under the protected /admin/* path).
-Astro.cookies.delete('admin_session', { path: '/' });
-return Astro.redirect('/admin/login', 303);
+import { env } from 'cloudflare:workers';
+import { tenantApiFetch } from '../../features/auth/tenant-api';
+
+if (Astro.request.method !== 'POST') {
+  return Astro.redirect('/admin', 303);
+}
+
+const forwarded = new Request(Astro.url, {
+  method: 'POST',
+  headers: new Headers({
+    Cookie: Astro.request.headers.get('cookie') ?? '',
+    Origin: Astro.url.origin,
+  }),
+});
+const response = await tenantApiFetch(forwarded, env, '/admin/v1/auth/logout', {
+  method: 'POST',
+});
+if (!response.ok) return new Response('Unable to sign out.', { status: 503 });
+
+const headers = new Headers({
+  Location: '/admin/login',
+  'Cache-Control': 'private, no-store',
+});
+for (const cookie of response.headers.getSetCookie()) headers.append('Set-Cookie', cookie);
+return new Response(null, { status: 303, headers });
 ---

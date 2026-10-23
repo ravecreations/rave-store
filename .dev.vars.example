@@ -1,17 +1,18 @@
 # Copy to .dev.vars (gitignored) and fill in. Locally only this file is read; in
 # production set each value with `wrangler secret put <NAME>`.
 #
-# Nothing here is REQUIRED to boot — the store runs with the always-on demo
-# checkout, and the ADMIN PASSWORD is set in the first-run setup wizard
-# (/admin/setup), stored hashed in D1.
+# The store boots with the always-on demo checkout. Staff sign-in is delegated to
+# the shared R5 Industries tenant identity service; configure its origin-bound key
+# below after registering this site's verified domain and tenant membership.
 #
-# There are only TWO Worker secrets. EVERY provider key (Stripe, OpenNode,
+# The two Worker secrets are SECRETS_KEK and AUTH_SECRET. The public tenant selector
+# below is not a secret. EVERY provider key (Stripe, OpenNode,
 # Lightning, Resend, Turnstile) and its config (default rail, Lightning node URLs,
 # email from-address, etc.) is set in the admin dashboard — keys encrypted in the
 # D1 vault, config in D1 settings. No provider env vars.
 #
-# `npm run provision:local` generates both of these into .dev.vars automatically,
-# so you usually don't edit this file by hand.
+# `npm run provision:local` generates both secrets into .dev.vars automatically.
+# Set the tenant selector separately after central tenant registration.
 
 # ── One-click deploy hint (this is a visible LABEL, not a real secret) ──
 # SECRETS_KEK and AUTH_SECRET below are MASKED, *required* fields in the "Deploy to
@@ -26,12 +27,16 @@ USE_A_LONG_RANDOM_STRING_FOR_SECRETS_KEK_AND_AUTH_SECRET=unused
 # Generate with: openssl rand -base64 32   (never goes in D1)
 SECRETS_KEK=
 
-# Signs admin + customer sessions (magic-link tokens, session cookies). Empty for the
-# same reason — a required field, not a silent default. Use a DIFFERENT long random
-# string from SECRETS_KEK.
+# Signs customer account sessions and links, and optionally cache-purge requests.
+# Use a DIFFERENT long random string from SECRETS_KEK.
 AUTH_SECRET=
 
 # Cloudflare Email Sending binding (optional) — only when using the 'cloudflare'
 # email provider (Workers Paid plan + an onboarded sender domain). Declared in
 # wrangler.jsonc as a binding, not here. Resend (the default) needs no binding —
 # its API key is set in Admin → Settings → Email.
+
+# Public tenant selector for the shared R5 Industries API. This key is bound to
+# the exact website origin and never grants access by itself; authorization still
+# requires an active identity session and tenant membership.
+R5I_TENANT_PUBLIC_KEY=

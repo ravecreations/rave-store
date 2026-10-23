@@ -98,9 +98,10 @@ cat <<EOF
     bunx wrangler secret put STRIPE_SECRET_KEY      --name $SLUG
     bunx wrangler secret put STRIPE_WEBHOOK_SECRET  --name $SLUG
 
-  Admin auth: open /admin/setup and set the admin password there (stored hashed in
-  D1). The wizard is reachable until you do — so set it promptly, or front /admin
-  with Cloudflare Access on a public deploy.
+  Admin auth: register this site's verified hostname and staff membership with the
+  R5 Industries tenant service, then set R5I_TENANT_PUBLIC_KEY in the Worker secret
+  store. Staff sign in with one-time email links; the store setup wizard is protected
+  by the same tenant membership check.
 
   Then open the store and finish onboarding at /admin/setup.
   Tear it all down with:  scripts/destroy-cf.sh $SLUG

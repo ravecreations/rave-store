@@ -13,7 +13,7 @@
 #   --no-build: skip `astro build` (reuse the existing dist/ — faster reruns).
 #
 # Auto-generates SECRETS_KEK + AUTH_SECRET into .dev.vars if missing (idempotent),
-# so the encrypted key vault and admin sessions work locally with no manual setup.
+# so the encrypted key vault and customer account sessions work locally.
 # Reset this repo's local data with:  bun run destroy:local
 set -euo pipefail
 
@@ -34,8 +34,8 @@ W="bunx wrangler"
 GEN="dist/server/wrangler.json"        # adapter-generated config (has main + bindings)
 
 # Locally there's no Worker secret store — secrets come from .dev.vars. Generate the
-# two the store needs (SECRETS_KEK encrypts the D1 key vault; AUTH_SECRET signs admin
-# + customer sessions) if they're not already set. Idempotent: never overwrites an
+# two the store needs (SECRETS_KEK encrypts the D1 key vault; AUTH_SECRET signs
+# customer sessions) if they're not already set. Idempotent: never overwrites an
 # existing value. .dev.vars is gitignored, so these stay on your machine.
 ensure_devvar() {
   local name="$1"
@@ -74,7 +74,9 @@ cat <<EOF
 
     bun run preview                 # add -- --port N for a custom port
 
-  Then: http://localhost:8787/   ·   admin http://localhost:8787/admin/setup
+  Then: http://localhost:8787/
+  Admin preview requires a registered R5 Industries tenant and R5I_TENANT_PUBLIC_KEY
+  in .dev.vars. For UI-only work, use `bun run dev` (its admin gate is bypassed).
   Reset local data:  bun run destroy:local
   Another store:     copy this repo to another directory and run provision:local there
 EOF

@@ -26,13 +26,16 @@ interface ImagesBindingMin {
   };
 }
 
-// Set by src/middleware.ts after verifying a Cloudflare Access JWT (Layer 2).
+// Extended with shared tenant identity values by src/middleware.ts.
 // Extends the adapter Runtime so `locals.cfContext` (the ExecutionContext) is
 // typed — used for ctx.waitUntil edge-caching in src/pages/images/[...key].ts.
 type CloudflareRuntime = import('@astrojs/cloudflare').Runtime;
 declare namespace App {
   interface Locals extends CloudflareRuntime {
     adminEmail?: string;
+    adminAuthenticated?: boolean;
+    authServiceUnavailable?: boolean;
+    identitySetCookies?: string[];
     /** Runtime settings overlay (store name etc.), loaded once per request. */
     settings?: import('./features/settings/db').StoreSettings;
     /** Resolved header/footer navigation, batched with settings so uncached
@@ -44,6 +47,10 @@ declare namespace App {
 declare namespace Cloudflare {
   interface Env {
     DB: import('@cloudflare/workers-types').D1Database;
+    /** Optional same-account service binding; other accounts use the public API host. */
+    API_SERVICE?: { fetch(request: Request): Promise<Response> };
+    /** Origin-bound public tenant selector issued by the R5 Industries API. */
+    R5I_TENANT_PUBLIC_KEY?: string;
     BUCKET: import('@cloudflare/workers-types').R2Bucket;
     FILES: import('@cloudflare/workers-types').R2Bucket;
     // Native edge counters for anonymous credential and paid-provider abuse.
@@ -75,15 +82,9 @@ declare namespace Cloudflare {
     // Set when a custom domain is the sole ingress; fresh workers.dev instances
     // omit it and use their request origin until a custom domain is attached.
     CANONICAL_ORIGIN?: string;
-    // Admin auth (src/middleware.ts): the password is set in the first-run setup
-    // wizard and stored as a PBKDF2 hash in D1 — there is no ADMIN_PASSWORD env var.
-    // Until one is set the wizard is reachable to create it (bootstrap); Cloudflare
-    // Access is the recommended production protection.
-    // Required together to enable fail-closed Cloudflare Access mode
-    // (src/middleware.ts + src/features/auth/access.ts).
-    // Non-secret — set both in wrangler.jsonc `vars` to enable forge-proof checks.
-    CF_ACCESS_TEAM_DOMAIN?: string; // https://<team>.cloudflareaccess.com
-    CF_ACCESS_AUD?: string; // the Access application's Audience (AUD) tag
+    // Admin auth is delegated to R5 Industries Identity and Authorization. The public
+    // selector is origin-bound and does not grant access; tenant membership is checked
+    // by the shared authorization service. Set it in .dev.vars or the Worker secret store.
     // Cloudflare Turnstile (bot protection on admin login + customer sign-in) is configured
     // in Admin → Settings → Bot protection: enabled + sitekey are D1 settings, the
     // secret is in the encrypted vault. No env vars.
@@ -94,9 +95,8 @@ declare namespace Cloudflare {
     // There are NO provider env vars; two Worker secrets are required below and
     // the cache-purge secret between them is optional.
     //
-    // Customer accounts (config.features.accounts) + admin sessions: signs the
-    // magic-link login token + session cookies (HMAC). Set via wrangler secret;
-    // never commit the value.
+    // Customer accounts (config.features.accounts): signs customer magic-link tokens
+    // and sessions. Staff admin sessions belong to the shared identity service.
     AUTH_SECRET?: string;
     // Optional dedicated secret for the signed post-deploy cache purge. Prefer
     // this on long-lived instances so deploy access never requires distributing

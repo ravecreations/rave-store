@@ -1,0 +1,10 @@
+---
+export const prerender = false;
+
+// The shared magic-link gateway returns to /console. Keep that platform contract
+// local to this store, then send the signed-in tenant admin to the store dashboard.
+const next = Astro.url.searchParams.get('signin') === 'invalid'
+  ? '/admin/login?signin=invalid'
+  : '/admin';
+return Astro.redirect(next, 303);
+---

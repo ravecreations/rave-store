@@ -32,9 +32,8 @@ const storeName = Astro.locals.settings?.storeName ?? config.storeName;
 // Nudge to finish first-run setup — except while on the wizard itself.
 const showSetupNudge =
   !Astro.locals.settings?.setupComplete && Astro.url.pathname !== '/admin/setup';
-// Show "Log out" only when a password-login session cookie is present. Under
-// Cloudflare Access or local dev there's no minshop session to clear.
-const showLogout = !!Astro.cookies.get('admin_session')?.value;
+// The shared identity session is validated by middleware for every protected request.
+const showLogout = Astro.locals.adminAuthenticated === true;
 const pageTitle = title ? `${title} — ${storeName} admin` : `${storeName} admin`;
 // Configuration that fails closed blocks checkout for physical orders, and the only
 // other signal is a Worker log nobody is watching. Surface it on EVERY admin page,
@@ -136,7 +135,11 @@ const currentLabel = nav.find((n) => n.key === active)?.label ?? 'Menu';
 
         <div class="mt-4 flex gap-4 text-xs uppercase tracking-widest text-gray-400 sm:mt-8 sm:flex-col sm:gap-2">
           <a href="/" class="hover:text-brand">&larr; View store</a>
-          {showLogout && <a href="/admin/logout" class="hover:text-brand">Log out</a>}
+          {showLogout && (
+            <form method="POST" action="/admin/logout">
+              <button type="submit" class="hover:text-brand">Log out</button>
+            </form>
+          )}
         </div>
       </aside>
 

@@ -113,9 +113,4 @@
 	// Secrets (SECRETS_KEK, AUTH_SECRET, provider keys) are set with `wrangler secret
 	// put` / the admin dashboard — never here.
 	//
-	// To forge-proof the admin gate with Cloudflare Access (src/middleware.ts), add:
-	//   "vars": {
-	//     "CF_ACCESS_TEAM_DOMAIN": "https://<team>.cloudflareaccess.com",
-	//     "CF_ACCESS_AUD": "<your Access application's AUD tag>"
-	//   }
 }

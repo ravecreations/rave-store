@@ -3,7 +3,7 @@
 # Reset a store's DATA back to a fresh install — WITHOUT destroying or reprovisioning
 # the instance. Empties every app table (products, orders, customers, categories,
 # images metadata) AND the settings table — which clears all dashboard config, the
-# encrypted provider keys, and the admin password — so the setup wizard reappears.
+# encrypted provider keys — so the setup wizard reappears.
 # The D1 database, R2 bucket, Worker, and current deploy all stay; the schema and
 # migration history are untouched (no re-migrate needed). Re-seed demo data with
 # --seed.
@@ -35,7 +35,7 @@ W="bunx wrangler"
 if [[ "$REMOTE" == "1" ]]; then TARGET="--remote"; WHERE="DEPLOYED"; else TARGET="--local"; WHERE="local"; fi
 
 if [[ "$YES" != "1" ]]; then
-  echo "This empties ALL products, orders, and settings (config, keys, admin password)"
+  echo "This empties ALL products, orders, and settings (config and provider keys)"
   echo "in the $WHERE store. The instance (D1/R2/Worker/deploy) stays."
   read -rp "Reset the $WHERE store to a fresh install? [y/N] " ans
   [[ "$ans" == "y" || "$ans" == "Y" ]] || { echo "aborted."; exit 0; }
@@ -70,4 +70,4 @@ if [[ "$SEED" == "1" ]]; then
     || echo "  (--seed given but ./seed.sql not found — skipped)"
 fi
 
-echo "✓ $WHERE store reset to a fresh install. Open /admin/setup to configure it again."
+echo "✓ $WHERE store reset to a fresh install. Sign in through tenant identity, then open /admin/setup."

@@ -30,8 +30,6 @@
     "provision:local": "bash scripts/provision-local.sh",
     "destroy:cf": "bash scripts/destroy-cf.sh",
     "destroy:local": "bash scripts/destroy-local.sh",
-    "admin:reset": "bash scripts/admin-reset.sh",
-    "admin:reset:remote": "bash scripts/admin-reset.sh --remote",
     "reset:local": "bash scripts/reset.sh",
     "reset:remote": "bash scripts/reset.sh --remote",
     "mcp:dev": "wrangler dev --config mcp/wrangler.jsonc --persist-to .wrangler/state",
@@ -42,15 +40,15 @@
     "db:seed:storefront-states": "bash scripts/seed-storefront-states.sh"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^14.4.0",
-    "astro": "^7.4.0",
+    "@astrojs/cloudflare": "^14.4.2",
+    "astro": "^7.4.2",
     "markdown-it": "^15.0.3",
-    "stripe": "^23.0.0",
+    "stripe": "^23.0.1",
     "uqr": "^0.1.3"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.10",
-    "@cloudflare/workers-types": "^5.20261019.1",
+    "@astrojs/check": "^0.9.12",
+    "@cloudflare/workers-types": "^5.20261023.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.6.5",
@@ -58,7 +56,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.12",
-    "wrangler": "^4.151.1"
+    "wrangler": "^4.152.0"
   },
   "overrides": {
     "miniflare": {
