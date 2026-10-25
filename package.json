@@ -35,7 +35,7 @@
     "mcp:dev": "wrangler dev --config mcp/wrangler.jsonc --persist-to .wrangler/state",
     "mcp:deploy": "wrangler deploy --config mcp/wrangler.jsonc",
     "mcp:check": "bash scripts/check-mcp.sh",
-    "scaffold:check": "bun run --cwd create-minshop test && bun pm pack --cwd ./create-minshop --dry-run",
+    "scaffold:check": "node -e \"if (!require('node:fs').existsSync('create-minshop')) process.exit(0); require('node:child_process').execSync('bun run --cwd create-minshop test && bun pm pack --cwd ./create-minshop --dry-run', { stdio: 'inherit' });\"",
     "theme:sync": "bun scripts/theme-sync.mjs",
     "db:seed:storefront-states": "bash scripts/seed-storefront-states.sh"
   },

@@ -146,3 +146,39 @@ body {
   color: transparent;
   font-weight: 700;
 }
+
+
+/* ── Brand Logo & Creations Subtitle Modifiers ──────────────────────────── */
+:root {
+  --rave-logo-magenta: #ff26f2;
+  --rave-logo-cyan: #1affd1;
+  --rave-logo-teal: #1affd1;
+  --rave-logo-yellow: #fcff00;
+  --rave-logo-core: currentColor;
+  --rave-logo-creations: #ff26f2;
+}
+
+.creations-magenta,
+[data-creations="magenta"] {
+  --rave-logo-creations: #ff26f2;
+}
+
+.creations-teal,
+[data-creations="teal"] {
+  --rave-logo-creations: #1affd1;
+}
+
+.creations-yellow,
+[data-creations="yellow"] {
+  --rave-logo-creations: #fcff00;
+}
+
+.creations-black,
+[data-creations="black"] {
+  --rave-logo-creations: #000000;
+}
+
+.creations-current,
+[data-creations="current"] {
+  --rave-logo-creations: currentColor;
+}
