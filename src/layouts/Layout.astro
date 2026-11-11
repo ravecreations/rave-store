@@ -97,6 +97,13 @@ const shell = buildShellModel({
         the branded 404 page. The files are also present as static assets, which
         answers the agents that probe regardless without invoking the Worker. */}
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <script is:inline>
+      try {
+        if (localStorage.getItem('rave-festival-mode') === 'active') {
+          document.documentElement.setAttribute('data-festival-mode', 'active');
+        }
+      } catch {}
+    </script>
     <title>{pageTitle}</title>
     <meta name="description" content={desc} />
     <link rel="canonical" href={canonical} />
@@ -279,6 +286,34 @@ const shell = buildShellModel({
           open();
         });
       }
+
+      (() => {
+        const syncButtons = (active) => {
+          document.querySelectorAll('[data-festival-toggle]').forEach((btn) => {
+            if (active) {
+              btn.classList.add('border-brand', 'text-brand', 'shadow-[0_0_15px_rgba(255,55,213,0.4)]');
+            } else {
+              btn.classList.remove('border-brand', 'text-brand', 'shadow-[0_0_15px_rgba(255,55,213,0.4)]');
+            }
+          });
+        };
+        const isActive = document.documentElement.getAttribute('data-festival-mode') === 'active';
+        syncButtons(isActive);
+        document.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-festival-toggle]');
+          if (!btn) return;
+          const current = document.documentElement.getAttribute('data-festival-mode') === 'active';
+          const next = !current;
+          if (next) {
+            document.documentElement.setAttribute('data-festival-mode', 'active');
+            try { localStorage.setItem('rave-festival-mode', 'active'); } catch {}
+          } else {
+            document.documentElement.removeAttribute('data-festival-mode');
+            try { localStorage.setItem('rave-festival-mode', 'off'); } catch {}
+          }
+          syncButtons(next);
+        });
+      })();
     </script>
   </body>
 </html>

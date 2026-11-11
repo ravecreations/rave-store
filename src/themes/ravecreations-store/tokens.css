@@ -189,12 +189,24 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--color-brand), var(--color-neon-yellow)); }
 
 /* ── Synchronized Festival Glow Stage Mode ──────────────────────────────── */
+html[data-festival-mode="active"] body {
+  background-image:
+    radial-gradient(70rem 36rem at 8% -8%, rgb(255 55 213 / 0.3), transparent 60%),
+    radial-gradient(60rem 32rem at 100% 0%, rgb(44 247 233 / 0.22), transparent 60%),
+    radial-gradient(50rem 30rem at 50% 100%, rgb(255 229 102 / 0.14), transparent 60%);
+}
+
 html[data-festival-mode="active"] .rave-panel {
   border-color: color-mix(in srgb, var(--color-brand) 70%, transparent);
   box-shadow:
     0 18px 48px rgb(18 8 23 / 0.5),
     0 0 44px color-mix(in srgb, var(--color-brand) 45%, transparent),
     0 0 30px color-mix(in srgb, var(--color-neon-cyan) 35%, transparent);
+}
+
+html[data-festival-mode="active"] .rave-glass {
+  border-bottom-color: color-mix(in srgb, var(--color-brand) 45%, transparent);
+  box-shadow: 0 4px 30px color-mix(in srgb, var(--color-brand) 20%, transparent);
 }
 
 .page-shell > h1 {

@@ -46,15 +46,30 @@ const { model } = Astro.props;
 <div class="border-b border-line bg-surface text-xs">
   <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-6 py-2">
     <a href={MAIN_SITE_URL} class="font-semibold text-neon-cyan hover:text-brand">&larr; ravecreations.art</a>
-    <nav aria-label="RAVE Creations site" class="flex flex-wrap items-center gap-x-5 gap-y-1 text-muted">
-      {
-        MAIN_SITE_LINKS.map((link) => (
-          <a href={link.href} class="hover:text-brand">
-            {link.text}
-          </a>
-        ))
-      }
-    </nav>
+    <div class="flex items-center gap-4">
+      <nav aria-label="RAVE Creations site" class="flex flex-wrap items-center gap-x-5 gap-y-1 text-muted">
+        {
+          MAIN_SITE_LINKS.map((link) => (
+            <a href={link.href} class="hover:text-brand">
+              {link.text}
+            </a>
+          ))
+        }
+      </nav>
+      <button
+        type="button"
+        data-festival-toggle
+        aria-label="Toggle Festival Stage Glow"
+        title="Toggle Festival Stage Glow"
+        class="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase text-muted transition-all hover:border-brand hover:text-brand hover:shadow-[0_0_12px_rgba(255,55,213,0.35)]"
+      >
+        <span class="relative flex size-1.5">
+          <span class="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-75"></span>
+          <span class="relative inline-flex size-1.5 rounded-full bg-brand"></span>
+        </span>
+        <span class="hidden sm:inline">Festival Glow</span>
+      </button>
+    </div>
   </div>
 </div>
 
