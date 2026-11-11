@@ -93,6 +93,8 @@ body {
 }
 
 .rave-panel {
+  position: relative;
+  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--color-neon-cyan) 16%, transparent);
   border-radius: 1.5rem;
   background: linear-gradient(
@@ -126,6 +128,37 @@ body {
 
 .rave-panel:hover img {
   transform: scale(1.05);
+}
+
+.rave-panel::after {
+  content: '';
+  position: absolute;
+  inset: -50% -50% -50% -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(44, 247, 233, 0.12) 36%,
+    rgba(255, 55, 213, 0.24) 48%,
+    rgba(255, 229, 102, 0.18) 60%,
+    transparent 76%
+  );
+  transform: translateX(-160%) rotate(25deg);
+  transition: transform 850ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.rave-panel:hover::after,
+.rave-panel:focus-within::after {
+  transform: translateX(110%) rotate(25deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rave-panel::after {
+    display: none !important;
+  }
 }
 
 .rave-glass {
