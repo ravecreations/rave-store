@@ -150,6 +150,11 @@ body {
 
 /* Page-level headings (catalog, category, cart…) get the brand gradient.
    Product and content-page headings stay solid for readability. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--color-paper); }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--color-neon-cyan), var(--color-brand)); border-radius: 9999px; border: 2px solid var(--color-paper); }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--color-brand), var(--color-neon-yellow)); }
+
 .page-shell > h1 {
   background: linear-gradient(90deg, var(--color-brand), var(--color-neon-cyan), var(--color-neon-yellow));
   -webkit-background-clip: text;
