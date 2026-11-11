@@ -188,6 +188,15 @@ body {
 ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--color-neon-cyan), var(--color-brand)); border-radius: 9999px; border: 2px solid var(--color-paper); }
 ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--color-brand), var(--color-neon-yellow)); }
 
+/* ── Synchronized Festival Glow Stage Mode ──────────────────────────────── */
+html[data-festival-mode="active"] .rave-panel {
+  border-color: color-mix(in srgb, var(--color-brand) 70%, transparent);
+  box-shadow:
+    0 18px 48px rgb(18 8 23 / 0.5),
+    0 0 44px color-mix(in srgb, var(--color-brand) 45%, transparent),
+    0 0 30px color-mix(in srgb, var(--color-neon-cyan) 35%, transparent);
+}
+
 .page-shell > h1 {
   background: linear-gradient(90deg, var(--color-brand), var(--color-neon-cyan), var(--color-neon-yellow));
   -webkit-background-clip: text;
