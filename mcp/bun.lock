@@ -10,7 +10,7 @@
         "zod": "^4.6.7",
       },
       "devDependencies": {
-        "@cloudflare/workers-types": "^5.20261112.1",
+        "@cloudflare/workers-types": "^5.20261116.1",
         "@types/node": "^26.6.6",
       },
     },
@@ -68,7 +68,7 @@
 
     "@cfworker/json-schema": ["@cfworker/json-schema@4.1.6", "", {}, "sha512-YzVGTHXf4bzlyAL5KAvHYCdNbbt6zM5cYkAgxqxQPDQM6aZ4ShIIN5yJ+6q7YeonnevxT8k/LmD2tJi/jOiKkg=="],
 
-    "@cloudflare/workers-types": ["@cloudflare/workers-types@5.20261112.1", "", {}, "sha512-FhkAlCQ+J/pV89nhehVaarhlvZFz+ybUsePmIDN1yfI7PMmpjwdxV663e9qu+G+oQSw9oM8u5sVmheNBFn4tnw=="],
+    "@cloudflare/workers-types": ["@cloudflare/workers-types@5.20261116.1", "", {}, "sha512-bym4dNT9Hnm+goedLTTTH85T6S4wOJJaOpKgk9MlEGU18/JKsChN+wHvSWUAIy5YVSm6LnuaUu3d3N4K0m8Dtg=="],
 
     "@emnapi/core": ["@emnapi/core@2.0.0-beta.2", "", { "dependencies": { "@emnapi/wasi-threads": "2.2.0", "tslib": "^2.4.0" } }, "sha512-MzCVoWtcg4Pm2B3je5mMvYMvj3MmBKw+fU7vbsJc9/iT8ip6/eYIHo/Dsm/mr+wsHB6SEyJDuxB09Yy6r/8+4A=="],
 
