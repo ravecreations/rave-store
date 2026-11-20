@@ -5,7 +5,7 @@ import type {
   CheckoutResult,
   WebhookResult,
 } from './provider';
-import { OPENNODE_CHECKOUT_TTL_SECONDS } from './provider';
+import { OPENNODE_CHECKOUT_TTL_SECONDS, WebhookLookupError } from './provider';
 import {
   createPendingPayment,
   getPendingByHash,
@@ -109,7 +109,6 @@ export function createOpenNodeProvider(
       // OpenNode posts application/x-www-form-urlencoded.
       const form = new URLSearchParams(payload);
       const id = form.get('id');
-      const status = form.get('status');
       const hashedOrder = form.get('hashed_order');
       if (!id || !hashedOrder) throw new Error('OpenNode: webhook missing id/hashed_order');
 
@@ -117,16 +116,33 @@ export function createOpenNodeProvider(
       if (hashedOrder.toLowerCase() !== expected) {
         throw new Error('OpenNode: bad webhook signature');
       }
-      if (status !== 'paid') {
-        const pending = status === 'expired' ? await getPendingByHash(db, id) : null;
-        return {
-          type: `opennode.${status ?? 'unknown'}`,
-          releaseReservationId: pending?.public_id,
-        };
+      const pending = await getPendingByHash(db, id);
+      if (pending?.backend !== 'opennode') return { type: 'opennode.unknown' };
+
+      // The callback authenticates the charge ID only. Confirm the current
+      // status directly before either settling payment or releasing stock.
+      let status: string;
+      try {
+        const response = await fetch(`${base}/v2/charge/${encodeURIComponent(id)}`, {
+          headers: { Authorization: apiKey },
+          redirect: 'error',
+        });
+        if (!response.ok) throw new Error(`Charge lookup returned ${response.status}`);
+        const { data } = await response.json<{ data?: { id?: string; status?: string } }>();
+        if (data?.id !== id || typeof data.status !== 'string') {
+          throw new Error('Malformed charge lookup response');
+        }
+        status = data.status;
+      } catch (cause) {
+        throw new WebhookLookupError('OpenNode charge lookup unavailable', { cause });
       }
 
-      const pending = await getPendingByHash(db, id);
-      if (!pending) return { type: 'opennode.unknown' };
+      if (status !== 'paid') {
+        return {
+          type: `opennode.${status}`,
+          releaseReservationId: status === 'expired' ? pending.reservation_id ?? undefined : undefined,
+        };
+      }
       return {
         type: 'opennode.paid',
         settlePendingPaymentId: id,

@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { readBoundedText } from '../../features/http/requestBody';
 import { env } from 'cloudflare:workers';
 import { getProductByPublicId, getProductBySlug, type Product } from '../../features/products/db';
 import {
@@ -436,20 +437,13 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
 async function handleJsonCheckout(request: Request, url: URL): Promise<Response> {
   const origin = url.origin;
 
-  // Early reject on the declared size, then enforce the cap on the bytes we
-  // actually read — a missing/lying content-length header can't slip past.
-  const declaredLength = Number(request.headers.get('content-length') ?? 0);
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_JSON_BYTES) {
-    return cjson({ error: 'Checkout body is too large.' }, 413);
-  }
-
-  let raw: string;
+  let raw: string | null;
   try {
-    raw = await request.text();
+    raw = await readBoundedText(request, MAX_JSON_BYTES);
   } catch {
     return cjson({ error: 'Invalid request body.' }, 400);
   }
-  if (new TextEncoder().encode(raw).length > MAX_JSON_BYTES) {
+  if (raw === null) {
     return cjson({ error: 'Checkout body is too large.' }, 413);
   }
 

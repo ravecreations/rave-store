@@ -56,7 +56,7 @@ export function aggregateStockTargets(items: ReservationItem[]): StockTarget[] {
   const targets = new Map<string, StockTarget>();
   for (const item of items) {
     const variantId = item.variantId ?? null;
-    const key = variantId == null ? `p:${item.productId}` : `v:${variantId}`;
+    const key = variantId == null ? `p:${item.productId}` : `v:${item.productId}:${variantId}`;
     const current = targets.get(key);
     if (current) current.quantity += item.quantity;
     else targets.set(key, { productId: item.productId, variantId, quantity: item.quantity });
@@ -291,17 +291,11 @@ export async function reserveInventory(
   await releaseExpiredReservations(db, 50, purger);
 
   const targets = aggregateStockTargets(items);
-  const checks: string[] = [];
-  const checkValues: number[] = [];
-  for (const target of targets) {
-    if (target.variantId == null) {
-      checks.push('COALESCE((SELECT stock FROM products WHERE id = ? AND active = 1), -1) >= ?');
-      checkValues.push(target.productId, target.quantity);
-    } else {
-      checks.push('COALESCE((SELECT stock FROM product_variants WHERE id = ? AND active = 1), -1) >= ?');
-      checkValues.push(target.variantId, target.quantity);
-    }
-  }
+  // Use one bind for the entire stock check so a 50-line checkout stays inside
+  // D1's parameter limit while keeping the hold and stock checks atomic.
+  const stockTargets = JSON.stringify(targets.map(({ productId, variantId, quantity }) =>
+    [productId, variantId, quantity],
+  ));
 
   let results: D1Result<(StockUpdateRow & { public_id?: string })>[] | null = null;
   let claimedItems: ReservationItem[] = [];
@@ -325,11 +319,24 @@ export async function reserveInventory(
       .prepare(
         `INSERT INTO checkout_reservations (public_id, items, payment_method, expires_at)
          SELECT ?, ?, ?, datetime('now', ?)
-          WHERE ${checks.join(' AND ')}
+          WHERE NOT EXISTS (
+            SELECT 1 FROM json_each(?) AS target
+            LEFT JOIN products AS p
+              ON p.id = target.value ->> '$[0]' AND p.active = 1
+            LEFT JOIN product_variants AS v
+              ON v.id = target.value ->> '$[1]' AND v.product_id = p.id AND v.active = 1
+            WHERE p.id IS NULL
+               OR (target.value ->> '$[1]' IS NULL AND (
+                     p.stock < (target.value ->> '$[2]')
+                     OR EXISTS (SELECT 1 FROM product_variants required
+                                 WHERE required.product_id = p.id AND required.active = 1)
+                   ))
+               OR (target.value ->> '$[1]' IS NOT NULL AND COALESCE(v.stock, -1) < (target.value ->> '$[2]'))
+          )
          ON CONFLICT(public_id) DO NOTHING
          RETURNING public_id`,
       )
-      .bind(publicId, JSON.stringify(claimedItems), paymentMethod, `+${ttlSeconds} seconds`, ...checkValues);
+      .bind(publicId, JSON.stringify(claimedItems), paymentMethod, `+${ttlSeconds} seconds`, stockTargets);
     // Release 1 writes no claims, so the decrement results sit at a different
     // offset there. Index off the statements actually batched, never off the
     // item count — getting this wrong silently skips every stock purge.

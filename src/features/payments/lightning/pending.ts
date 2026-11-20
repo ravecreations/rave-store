@@ -1,4 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
+import type { IncomingStatus } from './backend.ts';
 import type { PaidOrderInput, OrderItemInput, ShippingAddress } from '../../orders/db';
 
 /**
@@ -52,6 +53,13 @@ export interface NewPendingPayment {
   /** Inventory hold created with this payment; absent for legacy rows. */
   reservationId?: string | null;
   expiresAt: string | null;
+}
+
+/** Some nodes report the paid amount in addition to settlement status. */
+export function isPendingInvoicePaid(pending: PendingPayment, status: IncomingStatus): boolean {
+  if (!status.paid) return false;
+  return pending.amount_sat == null || status.amountSat === undefined ||
+    (Number.isSafeInteger(status.amountSat) && status.amountSat >= pending.amount_sat);
 }
 
 export async function createPendingPayment(db: D1Database, p: NewPendingPayment): Promise<void> {

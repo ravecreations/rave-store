@@ -8,6 +8,7 @@ import {
   getReservationStatusSnapshot,
 } from '../../../features/orders/reservations.ts';
 import { purgeStockProductCache } from '../../../features/cache/purge.ts';
+import { isFullyRefunded } from '../../../features/orders/refundState';
 
 export const prerender = false;
 
@@ -37,7 +38,7 @@ export const GET: APIRoute = async ({ params, request }) => {
   const order = await getOrderByPublicId(env.DB, access.order_public_id);
   if (order) {
     const items = await listOrderItems(env.DB, order.id);
-    const fullyRefunded = order.refunded_cents >= order.amount_total_cents;
+    const fullyRefunded = isFullyRefunded(order);
     const base = new URL(request.url).origin;
     return new Response(
       JSON.stringify({

@@ -1,16 +1,12 @@
-import { env } from 'cloudflare:workers';
 import {
-  markPendingSettled,
+  isPendingInvoicePaid,
   pendingToPaidOrder,
   type PendingPayment,
 } from '../lightning/pending';
 import { getLightningBackend } from '../lightning';
-import { getOrderByProviderSessionId, recordPaidOrder } from '../../orders/db';
 import { recordPaidWebhookOrder } from '../../orders/recordWebhook';
 import { resolveRequiredOrderEmail } from '../../email/orderPolicy';
-import { deliverOrderNotifications } from '../../email/outbox';
 import type { StoreSettings } from '../../settings/db';
-import { purgeStockProductCache } from '../../cache/purge';
 
 // Settlement logic for the self-rendered /pay page, one function per method. Kept
 // here (beside the views) so the route stays a thin dispatcher.
@@ -69,33 +65,20 @@ export async function settleLightningOnLoad(
   settings?: StoreSettings,
   waitUntil?: (promise: Promise<unknown>) => void,
 ): Promise<boolean> {
-  let paid = false;
+  if (pending.backend !== 'lnbits' && pending.backend !== 'phoenixd') return false;
   try {
-    const status = await (await getLightningBackend()).getIncoming(pending.payment_hash);
-    paid = status.paid;
+    const backend = await getLightningBackend(pending.backend);
+    const status = await backend.getIncoming(pending.payment_hash);
+    if (!isPendingInvoicePaid(pending, status)) return false;
   } catch {
-    // Node unreachable — the page's refresh loop will retry.
+    return false;
   }
-  if (!paid) return false;
-  const order = pendingToPaidOrder(pending);
-  const orderId = await recordPaidOrder(env.DB, order, purgeStockProductCache);
-  let settledOrderId = orderId;
-  if (!orderId) {
-    const existing = await getOrderByProviderSessionId(env.DB, order.providerSessionId);
-    if (!existing) {
-      throw new Error(`Inventory reservation ${pending.public_id} is no longer active.`);
-    }
-    settledOrderId = existing.id;
-    // Won the settlement → the batch already marked the pending row. Lost it
-    // (webhook got there first) → that winner's batch marked it; settle again
-    // explicitly only in that race, as belt and braces for the redirect check.
-    await markPendingSettled(env.DB, pending.payment_hash);
-  }
-  // This path exists precisely for installations with NO public webhook, so if
-  // it doesn't dispatch the outbox rows nothing else reliably will (the sweep
-  // needs a later sale). Backgrounded when the page has an execution context.
-  const deliver = () => deliverOrderNotifications(env.DB, settledOrderId!, origin, settings);
-  if (waitUntil) waitUntil(deliver().catch((err) => console.error('Notification delivery failed:', err)));
-  else await deliver();
+  await recordPaidWebhookOrder(
+    { type: 'lightning.paid', order: pendingToPaidOrder(pending) },
+    origin,
+    'lightning',
+    settings,
+    waitUntil,
+  );
   return true;
 }

@@ -134,6 +134,7 @@ export async function resolveCart(
       variant = variantsByPid.get(parsed.variantPublicId) ?? null;
       if (!variant || variant.product_id !== product.id) continue;
     }
+    if (!variant && product.requires_variant) continue;
     // Extras: keep only the active ones that belong to this product.
     const lineExtras = parsed.extraPublicIds
       .map((pid) => extrasByPid.get(pid))

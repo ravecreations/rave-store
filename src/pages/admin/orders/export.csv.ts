@@ -4,14 +4,10 @@ import { listOrders } from '../../../features/orders/db';
 import { parseOrderFilters, orderFilterClause } from '../../../features/orders/filter';
 import { getConfig, toMajorUnits, currencyDecimals } from '../../../config';
 import { orderReference } from '../../../features/orders/number';
+import { csvText } from '../../../features/orders/csv';
 
 export const prerender = false;
 
-// Quote a CSV field only when it contains a comma, quote, or newline.
-const esc = (v: unknown): string => {
-  const s = v == null ? '' : String(v);
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-};
 // Minor units → major-unit string, scaled by the order's own currency.
 const money = (cents: number, currency: string): string =>
   toMajorUnits(cents, currency).toFixed(currencyDecimals(currency));
@@ -35,18 +31,18 @@ export const GET: APIRoute = async ({ url }) => {
     'Carrier', 'Tracking',
   ];
   const rows = orders.map((o) => [
-    orderReference(o.public_id, o.id, onCfg),
-    o.created_at,
-    o.email ?? '',
-    o.status,
-    o.fulfillment_status,
+    csvText(orderReference(o.public_id, o.id, onCfg)),
+    csvText(o.created_at),
+    csvText(o.email ?? ''),
+    csvText(o.status),
+    csvText(o.fulfillment_status),
     // subtotal = total − shipping − tax + discount
     money(o.amount_total_cents - o.shipping_cents - o.tax_cents + o.discount_cents, o.currency),
     money(o.shipping_cents, o.currency),
     money(o.discount_cents, o.currency),
     money(o.tax_cents, o.currency),
     money(o.amount_total_cents, o.currency),
-    o.currency.toUpperCase(),
+    csvText(o.currency.toUpperCase()),
     money(o.provider_refunded_cents, o.currency),
     money(o.external_refunded_cents, o.currency),
     money(o.refunded_cents, o.currency),
@@ -56,12 +52,12 @@ export const GET: APIRoute = async ({ url }) => {
       : o.refunded_cents >= o.amount_total_cents
         ? 'full'
         : 'partial',
-    o.refund_review_reason && !o.refund_reviewed_at ? o.refund_review_reason : '',
-    o.tracking_carrier ?? '',
-    o.tracking_number ?? '',
+    csvText(o.refund_review_reason && !o.refund_reviewed_at ? o.refund_review_reason : ''),
+    csvText(o.tracking_carrier ?? ''),
+    csvText(o.tracking_number ?? ''),
   ]);
 
-  const csv = [header, ...rows].map((r) => r.map(esc).join(',')).join('\r\n') + '\r\n';
+  const csv = [header, ...rows].map((r) => r.join(',')).join('\r\n') + '\r\n';
   return new Response(csv, {
     headers: {
       'content-type': 'text/csv; charset=utf-8',

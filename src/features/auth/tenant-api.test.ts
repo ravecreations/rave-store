@@ -53,4 +53,18 @@ describe("tenant API forwarding", () => {
     const response = await tenantApiFetch(new Request("https://shop.example/admin"), {});
     expect(response.status).toBe(503);
   });
+
+  it("keeps oversized auth bodies away from the identity gateway", async () => {
+    const fetch = vi.fn();
+    const original = new Request("https://shop.example/admin/v1/auth/magic-link", {
+      method: "POST",
+      body: "a".repeat(32 * 1024 + 1),
+    });
+    const response = await tenantApiFetch(original, {
+      R5I_TENANT_PUBLIC_KEY: `pk_${"a".repeat(32)}`,
+      API_SERVICE: { fetch },
+    });
+    expect(response.status).toBe(413);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

@@ -5,12 +5,14 @@ import type {
   CheckoutResult,
   WebhookResult,
 } from './provider';
+import { WebhookLookupError } from './provider';
 import type { ShippingAddress } from '../orders/db';
 import type { LightningBackend } from './lightning/backend';
 import { getBtcRate, fiatCentsToSats } from './lightning/rate';
 import {
   createPendingPayment,
   getPendingByHash,
+  isPendingInvoicePaid,
   pendingToPaidOrder,
 } from './lightning/pending';
 import { getConfig } from '../../config';
@@ -135,12 +137,14 @@ export function createLightningProvider(
 
     async verifyWebhook(payload: string, headers: Headers): Promise<WebhookResult> {
       const evt = await backend.verifyWebhook(payload, headers);
-      // The webhook is an untrusted nudge — re-poll the node for the truth.
-      const status = await backend.getIncoming(evt.paymentHash);
-      if (!status.paid) return { type: 'lightning.unconfirmed' };
-
       const pending = await getPendingByHash(db, evt.paymentHash);
-      if (!pending) return { type: 'lightning.unknown' };
+      if (pending?.backend !== backend.name) return { type: 'lightning.unknown' };
+
+      // The webhook is an untrusted nudge — re-poll the node for the truth.
+      const status = await backend.getIncoming(pending.payment_hash).catch((cause) => {
+        throw new WebhookLookupError('Lightning invoice lookup unavailable', { cause });
+      });
+      if (!isPendingInvoicePaid(pending, status)) return { type: 'lightning.unconfirmed' };
       return {
         type: 'lightning.paid',
         settlePendingPaymentId: evt.paymentHash,

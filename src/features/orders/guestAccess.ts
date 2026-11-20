@@ -163,11 +163,12 @@ export async function sweepAbandonedGuestAccess(db: D1Database, limit = 5): Prom
   const hidden = await db
     .prepare(
       `UPDATE order_guest_access
-          SET hidden_at = COALESCE(hidden_at, datetime('now'))
+          SET hidden_at = datetime('now')
         WHERE order_public_id IN (
           SELECT g.order_public_id FROM order_guest_access g
           JOIN checkout_reservations r ON r.public_id = g.order_public_id
          WHERE r.status IN ('expired', 'failed')
+           AND g.hidden_at IS NULL
            AND r.terminal_at < datetime('now', '-3 days')
            AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.public_id = g.order_public_id)
          LIMIT ?1)`,

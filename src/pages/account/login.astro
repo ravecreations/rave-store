@@ -17,7 +17,9 @@ if (!(await accountsEnabled())) return Astro.redirect('/', 303);
 if (await getCustomerEmail(Astro.cookies)) return Astro.redirect('/account', 303);
 
 let sent = false;
-let error = Astro.url.searchParams.get('error') === 'expired' ? 'That link expired — request a new one.' : '';
+let error = Astro.url.searchParams.get('error') === 'expired'
+  ? 'That link is no longer valid. Request a new one.'
+  : '';
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();

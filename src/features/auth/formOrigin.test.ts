@@ -41,10 +41,27 @@ describe('isForbiddenFormOrigin', () => {
     expect(isForbiddenFormOrigin(request('POST'), order)).toBe(true);
   });
 
+  it('accepts server callbacks on the OpenNode and default webhook routes', () => {
+    for (const path of ['/api/webhook/opennode', '/api/webhook']) {
+      const webhook = new globalThis.URL(path, URL);
+      expect(isForbiddenFormOrigin(request('POST'), webhook)).toBe(false);
+      expect(isForbiddenFormOrigin(request('PUT'), webhook)).toBe(true);
+    }
+  });
+
   it('matches Astro for non-form bodies and missing content types', () => {
     expect(isForbiddenFormOrigin(request('POST', 'https://other.example', 'application/json'), URL))
       .toBe(false);
     expect(isForbiddenFormOrigin(request('POST', URL.origin, ''), URL)).toBe(false);
     expect(isForbiddenFormOrigin(request('POST', undefined, ''), URL)).toBe(true);
   });
+
+  it.each(['/account/logout', '/admin/logout', '/admin/v1/auth/logout', '/admin/v1/auth/magic-link'])(
+    'requires the storefront origin for JSON mutations at %s',
+    (path) => {
+      const target = new globalThis.URL(path, URL);
+      expect(isForbiddenFormOrigin(request('POST', 'https://other.example', 'application/json'), target)).toBe(true);
+      expect(isForbiddenFormOrigin(request('POST', URL.origin, 'application/json'), target)).toBe(false);
+    },
+  );
 });

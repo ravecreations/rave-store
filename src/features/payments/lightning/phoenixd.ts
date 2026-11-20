@@ -71,7 +71,7 @@ export function createPhoenixdBackend(baseUrl: string, password: string): Lightn
       if (res.status === 404) return { paid: false };
       if (!res.ok) throw new Error(`phoenixd getIncoming failed: ${res.status}`);
       const j = (await res.json()) as { isPaid?: boolean; receivedSat?: number };
-      return { paid: !!j.isPaid, amountSat: j.receivedSat };
+      return { paid: j.isPaid === true, amountSat: j.receivedSat };
     },
 
     async verifyWebhook(payload: string, headers: Headers): Promise<LightningWebhookEvent> {

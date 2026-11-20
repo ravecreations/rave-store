@@ -613,6 +613,8 @@ The two list tools accept `limit` and `offset` and return the page alongside `to
 
 **Auth:** a bearer token gates the *operator* tier only. Set `MCP_TOKEN`; operator clients send `Authorization: Bearer <token>`. An invalid token is a 401, never a silent downgrade to buyer tools. With `MCP_TOKEN` unset the operator tier is unavailable (503 if a header is presented) while the buyer tier keeps working — a store with no token can still sell to agents. (Cloudflare's Workers OAuth Provider is the upgrade for scoped/multi-user operator access.)
 
+When updating an existing MCP Worker, merge the `STORE_MCP_BUYER` binding and `v2` migration from `mcp/wrangler.template.jsonc` into its local Wrangler config. Buyer clients will start new sessions in the new namespace.
+
 ```sh
 cd mcp && npm install && cd ..
 cp mcp/.dev.vars.example mcp/.dev.vars      # set MCP_TOKEN

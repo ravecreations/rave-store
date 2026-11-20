@@ -80,15 +80,14 @@ if (isDemo && Astro.request.method === 'POST' && !payExpired) {
 
 if (
   isLightning &&
-  !payExpired &&
   (await settleLightningOnLoad(pending, Astro.url.origin, Astro.locals.settings, waitUntil))
 ) {
   return Astro.redirect(`/order/${guestParam}`, 303);
 }
 
 // Past its window (Lightning: the BOLT11's expiry; Demo: 24h) the unpaid flow is
-// terminal — render an "expired" state instead of the payment UI, so an
-// abandoned tab can't poll forever and an expired demo can't settle.
+// terminal — render an "expired" state instead of the payment UI. A visit
+// can still recover a Lightning invoice that was paid before it expired.
 const lightningExpired = isLightning && payExpired;
 
 const { storeName } = getConfig();

@@ -40,7 +40,7 @@ export interface ProductFields {
   requires_shipping: number;
 }
 
-/** Full input for create/update — form fields plus resolved image key + slug. */
+/** Full input for create — form fields plus resolved image key + slug. */
 export interface ProductInput extends ProductFields {
   image_key: string | null;
   slug: string;
@@ -194,13 +194,18 @@ export async function getProductsByIds(db: D1Database, ids: number[]): Promise<P
 export async function getProductsByPublicIds(
   db: D1Database,
   publicIds: string[],
-): Promise<Product[]> {
+): Promise<Array<Product & { requires_variant: number }>> {
   if (publicIds.length === 0) return [];
-  const placeholders = publicIds.map(() => '?').join(',');
   const { results } = await db
-    .prepare(`SELECT * FROM products WHERE public_id IN (${placeholders}) AND active = 1`)
-    .bind(...publicIds)
-    .all<Product>();
+    .prepare(
+      `SELECT p.*, EXISTS (
+         SELECT 1 FROM product_variants v WHERE v.product_id = p.id AND v.active = 1
+       ) AS requires_variant
+         FROM products p
+        WHERE p.public_id IN (SELECT value FROM json_each(?)) AND p.active = 1`,
+    )
+    .bind(JSON.stringify(publicIds))
+    .all<Product & { requires_variant: number }>();
   return results ?? [];
 }
 
@@ -404,16 +409,22 @@ export async function createProduct(db: D1Database, p: ProductInput): Promise<nu
   });
 }
 
-export async function updateProduct(db: D1Database, id: number, p: ProductInput): Promise<void> {
-  await db
-    .prepare(
-      `UPDATE products
-         SET name = ?, slug = ?, description = ?, price_cents = ?, currency = ?, image_key = ?, stock = ?, active = ?,
-             weight_grams = ?, requires_shipping = ?
-       WHERE id = ?`,
-    )
-    .bind(p.name, p.slug, p.description, p.price_cents, p.currency, p.image_key, p.stock, p.active, p.weight_grams, p.requires_shipping, id)
+type ProductUpdate = Partial<ProductFields & { slug: string }>;
+const PRODUCT_UPDATE_FIELDS = [
+  'name', 'slug', 'description', 'price_cents', 'currency', 'stock', 'active',
+  'weight_grams', 'requires_shipping',
+] as const satisfies readonly (keyof ProductUpdate)[];
+
+export async function updateProduct(db: D1Database, id: number, patch: ProductUpdate): Promise<boolean> {
+  // Keep concurrent edits to omitted fields and leave image association writes
+  // to the guarded media routes.
+  const fields = PRODUCT_UPDATE_FIELDS.filter((field) => patch[field] !== undefined);
+  if (fields.length === 0) return true;
+  const result = await db
+    .prepare(`UPDATE products SET ${fields.map((field) => `${field} = ?`).join(', ')} WHERE id = ?`)
+    .bind(...fields.map((field) => patch[field]), id)
     .run();
+  return (result.meta?.changes ?? 0) > 0;
 }
 
 /** Attach/replace a private deliverable. Old object keys are intentionally retained. */

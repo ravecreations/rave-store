@@ -33,9 +33,15 @@
   },
   // McpAgent is Durable-Object-backed (holds the MCP session).
   "durable_objects": {
-    "bindings": [{ "name": "STORE_MCP", "class_name": "StoreMcp" }]
+    "bindings": [
+      { "name": "STORE_MCP", "class_name": "StoreMcp" },
+      { "name": "STORE_MCP_BUYER", "class_name": "BuyerStoreMcp" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["StoreMcp"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["StoreMcp"] },
+    { "tag": "v2", "new_sqlite_classes": ["BuyerStoreMcp"] }
+  ],
   // Same database as the storefront Worker.
   "d1_databases": [
     {

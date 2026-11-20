@@ -91,6 +91,10 @@ if (productPublicId) {
       variants.length > 0 && buyNowVariantId
         ? (variants.find((v) => v.public_id === buyNowVariantId) ?? null)
         : null;
+    if (variants.length > 0 && !variant) {
+      const error = `Please choose a ${product.variant_label || 'option'}.`;
+      return Astro.redirect(`/products/${product.slug}?error=${encodeURIComponent(error)}`, 303);
+    }
     const extras = buyNowExtraIds.length
       ? await getExtrasByPublicIds(env.DB, product.id, buyNowExtraIds)
       : [];

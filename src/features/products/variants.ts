@@ -87,12 +87,10 @@ export async function getActiveVariantsByPublicIds(
   db: D1Database,
   publicIds: string[],
 ): Promise<ProductVariant[]> {
-  const unique = [...new Set(publicIds)];
-  if (unique.length === 0) return [];
-  const ph = unique.map(() => '?').join(',');
+  if (publicIds.length === 0) return [];
   const { results } = await db
-    .prepare(`SELECT * FROM product_variants WHERE active = 1 AND public_id IN (${ph})`)
-    .bind(...unique)
+    .prepare('SELECT * FROM product_variants WHERE active = 1 AND public_id IN (SELECT value FROM json_each(?))')
+    .bind(JSON.stringify(publicIds))
     .all<ProductVariant>();
   return results ?? [];
 }
@@ -122,12 +120,10 @@ export async function getActiveExtrasByPublicIds(
   db: D1Database,
   publicIds: string[],
 ): Promise<ProductExtra[]> {
-  const unique = [...new Set(publicIds)];
-  if (unique.length === 0) return [];
-  const ph = unique.map(() => '?').join(',');
+  if (publicIds.length === 0) return [];
   const { results } = await db
-    .prepare(`SELECT * FROM product_extras WHERE active = 1 AND public_id IN (${ph})`)
-    .bind(...unique)
+    .prepare('SELECT * FROM product_extras WHERE active = 1 AND public_id IN (SELECT value FROM json_each(?))')
+    .bind(JSON.stringify(publicIds))
     .all<ProductExtra>();
   return results ?? [];
 }
@@ -139,12 +135,11 @@ export async function getExtrasByPublicIds(
   publicIds: string[],
 ): Promise<ProductExtra[]> {
   if (publicIds.length === 0) return [];
-  const ph = publicIds.map(() => '?').join(',');
   const { results } = await db
     .prepare(
-      `SELECT * FROM product_extras WHERE product_id = ? AND active = 1 AND public_id IN (${ph}) ORDER BY position, id`,
+      'SELECT * FROM product_extras WHERE product_id = ? AND active = 1 AND public_id IN (SELECT value FROM json_each(?)) ORDER BY position, id',
     )
-    .bind(productId, ...publicIds)
+    .bind(productId, JSON.stringify(publicIds))
     .all<ProductExtra>();
   return results ?? [];
 }

@@ -78,7 +78,7 @@ export function createLnbitsBackend(baseUrl: string, apiKey: string): LightningB
       if (res.status === 404) return { paid: false };
       if (!res.ok) throw new Error(`LNbits getIncoming failed: ${res.status}`);
       const j = (await res.json()) as { paid?: boolean };
-      return { paid: !!j.paid };
+      return { paid: j.paid === true };
     },
 
     async verifyWebhook(payload: string): Promise<LightningWebhookEvent> {

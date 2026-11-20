@@ -16,6 +16,8 @@ import { signToken, verifyToken } from './token';
 const MAGIC_TTL = 15 * 60; // login link valid 15 min
 const SESSION_TTL = 30 * 24 * 3600; // session cookie valid 30 days
 const COOKIE = 'customer_session';
+const magicKey = (secret: string) => `customer-magic:v1:${secret}`;
+const sessionKey = (secret: string) => `customer-session:v1:${secret}`;
 
 const now = () => Date.now() / 1000;
 const normalize = (email: string) => email.trim().toLowerCase();
@@ -46,7 +48,7 @@ export async function requestLogin(email: string, origin: string): Promise<void>
   const secret = env.AUTH_SECRET;
   if (!secret) return;
   const addr = normalize(email);
-  const token = await signToken(addr, secret, MAGIC_TTL, now());
+  const token = await signToken(`${crypto.randomUUID()}:${addr}`, magicKey(secret), MAGIC_TTL, now());
   const link = `${origin}/account/verify?token=${encodeURIComponent(token)}`;
 
   if (import.meta.env.DEV) console.log(`[magic-link] ${addr} → ${link}`);
@@ -62,11 +64,25 @@ export async function requestLogin(email: string, origin: string): Promise<void>
   }
 }
 
-/** Verify a magic-link token → the email it was issued for, or null. */
-export async function verifyLoginToken(token: string | null): Promise<string | null> {
+/** Redeem a magic link exactly once, even when requests race. */
+export async function redeemLoginToken(token: string | null): Promise<string | null> {
   const secret = env.AUTH_SECRET;
   if (!secret) return null;
-  return verifyToken(token, secret, now());
+  const timestamp = Math.floor(now());
+  const payload = await verifyToken(token, magicKey(secret), timestamp);
+  const separator = payload?.indexOf(':') ?? -1;
+  if (!payload || separator < 1) return null;
+  const nonce = payload.slice(0, separator);
+  const email = payload.slice(separator + 1);
+
+  // Retain each redemption for at least the maximum remaining life of its link.
+  const [, redemption] = await env.DB.batch([
+    env.DB.prepare('DELETE FROM customer_login_redemptions WHERE expires_at <= ?').bind(timestamp),
+    env.DB.prepare(
+      'INSERT INTO customer_login_redemptions (nonce, expires_at) VALUES (?, ?) ON CONFLICT(nonce) DO NOTHING',
+    ).bind(nonce, timestamp + MAGIC_TTL),
+  ]);
+  return redemption.meta.changes === 1 ? email : null;
 }
 
 /** Issue the signed session cookie for a verified email. */
@@ -77,7 +93,7 @@ export async function setCustomerSession(
 ): Promise<void> {
   const secret = env.AUTH_SECRET;
   if (!secret) return;
-  const token = await signToken(email, secret, SESSION_TTL, now());
+  const token = await signToken(email, sessionKey(secret), SESSION_TTL, now());
   cookies.set(COOKIE, token, {
     httpOnly: true,
     secure,
@@ -95,5 +111,5 @@ export function clearCustomerSession(cookies: AstroCookies): void {
 export async function getCustomerEmail(cookies: AstroCookies): Promise<string | null> {
   const secret = env.AUTH_SECRET;
   if (!secret) return null;
-  return verifyToken(cookies.get(COOKIE)?.value ?? null, secret, now());
+  return verifyToken(cookies.get(COOKIE)?.value ?? null, sessionKey(secret), now());
 }

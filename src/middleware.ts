@@ -141,6 +141,9 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
     path === '/admin/v1/auth/verify' ||
     path === '/admin/v1/auth/logout'
   ) {
+    if (path !== '/admin/v1/auth/verify' && context.request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405, headers: { Allow: 'POST' } });
+    }
     return tenantApiFetch(context.request, env);
   }
 

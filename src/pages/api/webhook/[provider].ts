@@ -7,6 +7,8 @@ import {
 } from '../../../features/payments';
 import { getStoreSettings } from '../../../features/settings/db';
 import { recordPaidWebhookOrder } from '../../../features/orders/recordWebhook';
+import { MAX_WEBHOOK_BYTES, WebhookLookupError } from '../../../features/payments/provider';
+import { readBoundedText } from '../../../features/http/requestBody';
 
 export const prerender = false;
 
@@ -23,7 +25,9 @@ export const POST: APIRoute = async ({ request, params }) => {
     return new Response('Unknown or unconfigured payment method', { status: 404 });
   }
 
-  const payload = await request.text();
+  const payload = await readBoundedText(request, MAX_WEBHOOK_BYTES).catch(() => undefined);
+  if (payload === undefined) return new Response('Invalid request body', { status: 400 });
+  if (payload === null) return new Response('Webhook body is too large', { status: 413 });
   const origin = new URL(request.url).origin;
 
   let result;
@@ -31,6 +35,9 @@ export const POST: APIRoute = async ({ request, params }) => {
     const provider = await getPaymentProvider(method);
     result = await provider.verifyWebhook(payload, request.headers);
   } catch (err) {
+    if (err instanceof WebhookLookupError) {
+      return new Response('Payment provider temporarily unavailable', { status: 503 });
+    }
     return new Response(`Webhook verification failed: ${(err as Error).message}`, { status: 400 });
   }
 

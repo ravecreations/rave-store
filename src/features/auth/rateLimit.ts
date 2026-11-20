@@ -16,7 +16,12 @@ export function rateLimitBucket(
     return 'search';
   }
   if (method !== 'POST') return null;
-  if (pathname === '/admin/login' || pathname === '/account/login') return 'auth';
+  if (
+    pathname === '/admin/login' ||
+    pathname === '/admin/v1/auth/magic-link' ||
+    pathname === '/account/login' ||
+    pathname === '/account/verify'
+  ) return 'auth';
   if (pathname === '/api/checkout' || pathname === '/checkout' || pathname.startsWith('/pay/')) {
     return 'checkout';
   }
@@ -31,7 +36,8 @@ export function rateLimitBucket(
  */
 export function anonymousRateLimitKey(request: Request, pathname: string): string {
   const client = request.headers.get('cf-connecting-ip')?.trim() || 'unknown-client';
-  return `${new URL(request.url).hostname}:${pathname}:${client}`;
+  const route = pathname === '/admin/v1/auth/magic-link' ? '/admin/login' : pathname;
+  return `${new URL(request.url).hostname}:${route}:${client}`;
 }
 
 export async function checkRateLimit(

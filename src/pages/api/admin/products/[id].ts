@@ -188,7 +188,9 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
     }
   }
 
-  await updateProduct(env.DB, id, { ...parsed.data, image_key, slug });
+  if (!(await updateProduct(env.DB, id, { ...parsed.data, slug }))) {
+    return fail('This product no longer exists.');
+  }
   if (attachmentActive() && deliverable instanceof File && deliverable.size > 0) {
     await setProductFile(env.DB, id, await uploadDigitalFile(getFileStorage(), deliverable));
   } else if (attachmentActive() && form.get('remove_deliverable') != null) {

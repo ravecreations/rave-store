@@ -12,6 +12,7 @@ import {
 } from '../../src/features/orders/reservations.ts';
 import { reservationItems } from '../../src/features/orders/reservationItems.ts';
 import { recordPaidOrder } from '../../src/features/orders/db.ts';
+import { getProductsByPublicIds, updateProduct } from '../../src/features/products/db.ts';
 import { pendingToPaidOrder } from '../../src/features/payments/lightning/pending.ts';
 import {
   claimNotification,
@@ -165,6 +166,18 @@ try {
     .first();
   assert(transitionVariant?.id);
   const variantItem = { ...transitionItem, variantId: transitionVariant.id };
+  assert.equal(
+    await reserveInventory(db, crypto.randomUUID(), [transitionItem], 600, 'lightning'),
+    false,
+    'a product with an active variant cannot reserve base stock',
+  );
+  assert.equal(
+    await reserveInventory(db, crypto.randomUUID(), [
+      variantItem, { ...variantItem, productId: product.id },
+    ], 600, 'lightning'),
+    false,
+    'a variant must belong to each line’s product',
+  );
   const firstVariant = crypto.randomUUID();
   const secondVariant = crypto.randomUUID();
   assert.equal(
@@ -716,6 +729,28 @@ try {
     true,
   );
   assert.deepEqual(purged, ['prod_purgeboundary'], 'crossing In stock → Sold out purged the product');
+
+  assert.equal(await updateProduct(db, purgeProduct.id, { description: 'Updated description' }), true);
+  const edited = await db
+    .prepare('SELECT description, stock FROM products WHERE id = ?')
+    .bind(purgeProduct.id)
+    .first();
+  assert.deepEqual(edited, { description: 'Updated description', stock: 0 });
+
+  await db.prepare(`WITH RECURSIVE numbers(n) AS (
+    SELECT 1 UNION ALL SELECT n + 1 FROM numbers WHERE n < 50
+  ) INSERT INTO products (public_id, name, slug, description, price_cents, currency, stock, active)
+    SELECT 'prod_bulk' || n, 'Bulk product', 'bulk-' || n, '', 100, 'usd', 1, 1 FROM numbers`).run();
+  const lookupIds = Array.from({ length: 110 }, (_, i) => `prod_bulk${i + 1}`);
+  assert.equal((await getProductsByPublicIds(db, lookupIds)).length, 50);
+  const { results: bulkProducts } = await db.prepare("SELECT id FROM products WHERE slug GLOB 'bulk-*'").all();
+  const bulkItems = bulkProducts.map(({ id }) => ({
+    productId: id, name: 'Bulk product', priceCents: 100, quantity: 1,
+  }));
+  assert.equal(bulkItems.length, 50);
+  assert.equal(await reserveInventory(db, crypto.randomUUID(), bulkItems, 600, 'stripe', undefined, 1), true);
+  const remaining = await db.prepare("SELECT SUM(stock) AS stock FROM products WHERE slug GLOB 'bulk-*'").first();
+  assert.equal(remaining.stock, 0);
 
   console.log('Reservation integration passed: concurrency + pending + terminal settlement + inventory exception + legacy + cross-release rollback + stock purge offset');
 } finally {

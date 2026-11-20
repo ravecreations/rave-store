@@ -1,19 +1,42 @@
 ---
 export const prerender = false;
+import Layout from '../../layouts/Layout.astro';
 import {
   accountsEnabled,
-  verifyLoginToken,
+  redeemLoginToken,
   setCustomerSession,
 } from '../../features/auth/customer';
 
-// Consume a magic link: verify the token → set the session cookie → /account.
-// Invalid/expired → back to login with a hint. (Cookie is Secure only over https,
-// so it works in local http dev too.)
 if (!(await accountsEnabled())) return Astro.redirect('/', 303);
 
-const email = await verifyLoginToken(Astro.url.searchParams.get('token'));
-if (!email) return Astro.redirect('/account/login?error=expired', 303);
+// A mail scanner can follow the link without consuming it. The user confirms
+// with a same-origin POST to redeem the token.
+// Send only the origin so the query token stays private and the form retains
+// the Origin header required by the same-origin check.
+Astro.response.headers.set('Referrer-Policy', 'strict-origin');
+const token = Astro.url.searchParams.get('token');
+if (Astro.request.method === 'POST') {
+  const submitted = (await Astro.request.formData()).get('token');
+  const email = await redeemLoginToken(typeof submitted === 'string' ? submitted : null);
+  if (!email) return Astro.redirect('/account/login?error=expired', 303);
 
-await setCustomerSession(Astro.cookies, email, Astro.url.protocol === 'https:');
-return Astro.redirect('/account', 303);
+  await setCustomerSession(Astro.cookies, email, Astro.url.protocol === 'https:');
+  return Astro.redirect('/account', 303);
+}
+if (!token) return Astro.redirect('/account/login?error=expired', 303);
 ---
+
+<Layout title="Confirm sign-in">
+  <div class="mx-auto max-w-sm py-10">
+    <h1 class="mb-5 font-serif text-3xl tracking-tight sm:text-4xl">Confirm sign-in</h1>
+    <form method="POST" action="/account/verify">
+      <input type="hidden" name="token" value={token} />
+      <button
+        type="submit"
+        class="w-full rounded-md bg-brand px-4 py-2.5 font-medium text-on-brand hover:bg-brand-hover"
+      >
+        Sign in
+      </button>
+    </form>
+  </div>
+</Layout>

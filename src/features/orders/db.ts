@@ -232,8 +232,8 @@ export async function listOrdersByEmail(
   offset = 0,
 ): Promise<Order[]> {
   const { results } = await db
-    .prepare('SELECT * FROM orders WHERE email = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
-    .bind(email, limit, offset)
+    .prepare('SELECT * FROM orders WHERE lower(trim(email)) = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+    .bind(email.trim().toLowerCase(), limit, offset)
     .all<Order>();
   return results ?? [];
 }
@@ -241,8 +241,8 @@ export async function listOrdersByEmail(
 /** Total orders belonging to one normalized customer email. */
 export async function countOrdersByEmail(db: D1Database, email: string): Promise<number> {
   const row = await db
-    .prepare('SELECT COUNT(*) AS n FROM orders WHERE email = ?')
-    .bind(email)
+    .prepare('SELECT COUNT(*) AS n FROM orders WHERE lower(trim(email)) = ?')
+    .bind(email.trim().toLowerCase())
     .first<{ n: number }>();
   return row?.n ?? 0;
 }
@@ -473,7 +473,7 @@ export async function recordPaidOrder(
   const orderValues = [
     o.providerSessionId,
     publicId,
-    o.email,
+    o.email?.trim().toLowerCase() ?? null,
     o.amountTotalCents,
     o.shippingCents ?? 0,
     o.shippingLabel ?? null,

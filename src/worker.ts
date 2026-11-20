@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { sweepStaleNotifications } from './features/email/outbox';
 import { releaseExpiredReservations } from './features/orders/reservations';
 import { getSetting } from './features/settings/db';
+import { purgeStockProductCache } from './features/cache/purge';
 
 /**
  * Worker entrypoint.
@@ -30,7 +31,7 @@ async function runScheduledSweeps(): Promise<void> {
   // Inventory first: it needs no configuration and it is the one that silently
   // costs sales, since held stock reads as sold out to every shopper.
   try {
-    await releaseExpiredReservations(db, 50);
+    await releaseExpiredReservations(db, 50, purgeStockProductCache);
   } catch (err) {
     console.error('Scheduled reservation sweep failed:', err);
   }

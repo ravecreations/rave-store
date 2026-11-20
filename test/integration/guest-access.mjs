@@ -106,6 +106,15 @@ try {
   assert.ok(await getGuestAccess(db, fresh.publicId), 'fresh unsettled row survives the sweep');
   assert.ok(await getGuestAccess(db, orderPublicId), 'settled row survives the sweep');
 
+  const nextTerminal = await claimOrderIdentity(db);
+  await db
+    .prepare("INSERT INTO checkout_reservations (public_id, status, terminal_at) VALUES (?, 'expired', datetime('now', '-4 days'))")
+    .bind(nextTerminal.publicId)
+    .run();
+  assert.equal(await sweepAbandonedGuestAccess(db, 1), 1);
+  assert.ok((await getGuestAccess(db, nextTerminal.publicId))?.hidden_at, 'a hidden row cannot consume the next batch');
+  assert.equal(await sweepAbandonedGuestAccess(db, 1), 0, 'the sweep finishes when no visible rows remain');
+
   // Customer-email guest URLs: tokenized for ord_ orders, legacy passthrough,
   // and null (omit link) when a new order somehow has no registry row.
   const url = await guestOrderUrl(db, orderPublicId, 'https://s.example');

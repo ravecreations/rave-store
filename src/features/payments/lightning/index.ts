@@ -13,10 +13,10 @@ export type { LightningBackend } from './backend';
  * key/password live in the encrypted vault. Throws a clear setup error if the chosen
  * backend isn't fully configured. Async because it reads D1.
  */
-export async function getLightningBackend(): Promise<LightningBackend> {
+export async function getLightningBackend(backend?: 'lnbits' | 'phoenixd'): Promise<LightningBackend> {
   const s = await getStoreSettings(env.DB);
 
-  if (s.lightningBackend === 'lnbits') {
+  if ((backend ?? s.lightningBackend) === 'lnbits') {
     const url = s.lnbitsUrl;
     const key = await getSecret(env.DB, 'lnbits_api_key');
     if (!url || !key) {

@@ -3,6 +3,8 @@ import { env } from 'cloudflare:workers';
 import { getPaymentProvider, defaultMethod } from '../../features/payments';
 import { getStoreSettings } from '../../features/settings/db';
 import { recordPaidWebhookOrder } from '../../features/orders/recordWebhook';
+import { MAX_WEBHOOK_BYTES, WebhookLookupError } from '../../features/payments/provider';
+import { readBoundedText } from '../../features/http/requestBody';
 
 export const prerender = false;
 
@@ -11,7 +13,9 @@ export const prerender = false;
 // path, /api/webhook/<method>, since one endpoint can only verify one signature.
 // Provider-agnostic: the provider verifies + normalizes; the helper persists + emails.
 export const POST: APIRoute = async ({ request }) => {
-  const payload = await request.text();
+  const payload = await readBoundedText(request, MAX_WEBHOOK_BYTES).catch(() => undefined);
+  if (payload === undefined) return new Response('Invalid request body', { status: 400 });
+  if (payload === null) return new Response('Webhook body is too large', { status: 413 });
   const origin = new URL(request.url).origin;
   const settings = await getStoreSettings(env.DB);
   const method = defaultMethod(settings);
@@ -21,6 +25,9 @@ export const POST: APIRoute = async ({ request }) => {
     const provider = await getPaymentProvider(method);
     result = await provider.verifyWebhook(payload, request.headers);
   } catch (err) {
+    if (err instanceof WebhookLookupError) {
+      return new Response('Payment provider temporarily unavailable', { status: 503 });
+    }
     return new Response(`Webhook verification failed: ${(err as Error).message}`, { status: 400 });
   }
 

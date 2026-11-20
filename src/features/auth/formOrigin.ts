@@ -7,6 +7,12 @@ const FORM_CONTENT_TYPES = [
 ];
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+function isAccountMutation(pathname: string): boolean {
+  return pathname.startsWith('/admin/v1/auth/') ||
+    pathname === '/admin/logout' ||
+    pathname === '/account/logout';
+}
+
 function hasFormContentType(contentType: string | null): boolean {
   const value = contentType?.toLowerCase() ?? '';
   return FORM_CONTENT_TYPES.some((type) => value.includes(type));
@@ -29,7 +35,15 @@ function isCapabilityPayPath(pathname: string): boolean {
 export function isForbiddenFormOrigin(request: Request, url: URL): boolean {
   if (SAFE_METHODS.has(request.method)) return false;
 
+  // OpenNode sends form-encoded server callbacks. The webhook verifies them
+  // independently of browser cookies and Origin.
+  if (request.method === 'POST' &&
+      (url.pathname === '/api/webhook/opennode' || url.pathname === '/api/webhook')) {
+    return false;
+  }
+
   const originMatches = request.headers.get('origin') === url.origin;
+  if (isAccountMutation(url.pathname)) return !originMatches;
   if (!request.headers.has('content-type')) return !originMatches;
   if (!hasFormContentType(request.headers.get('content-type'))) return false;
   if (originMatches) return false;

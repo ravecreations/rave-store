@@ -94,6 +94,11 @@ export interface CheckoutResult {
   };
 }
 
+export const MAX_WEBHOOK_BYTES = 2 * 1024 * 1024;
+
+/** A verified callback could not be reconciled with the provider yet. */
+export class WebhookLookupError extends Error {}
+
 export interface WebhookResult {
   /** Provider event type, for logging/branching. */
   type: string;

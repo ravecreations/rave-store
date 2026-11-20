@@ -1,11 +1,12 @@
 import Stripe from 'stripe';
+import type { D1Database } from '@cloudflare/workers-types';
 import type {
   PaymentProvider,
   CreateCheckoutParams,
   CheckoutResult,
   WebhookResult,
 } from './provider';
-import { STRIPE_CHECKOUT_TTL_SECONDS } from './provider';
+import { STRIPE_CHECKOUT_TTL_SECONDS, WebhookLookupError } from './provider';
 import { stripeAllowedCountries } from './stripeCountries.ts';
 
 /**
@@ -42,6 +43,7 @@ type ShippingDetails = {
  * async (WebCrypto) path.
  */
 export function createStripeProvider(
+  db: D1Database,
   secretKey: string,
   webhookSecret: string,
 ): PaymentProvider {
@@ -124,13 +126,36 @@ export function createStripeProvider(
         webhookSecret,
       );
 
+      let reservationId: string | undefined;
+      if (
+        event.type === 'checkout.session.expired' ||
+        event.type === 'checkout.session.async_payment_failed' ||
+        event.type === 'checkout.session.completed' ||
+        event.type === 'checkout.session.async_payment_succeeded'
+      ) {
+        const { metadata } = event.data.object;
+        reservationId = metadata?.reservation_id;
+        if (!reservationId || metadata?.public_id !== reservationId) return { type: event.type };
+
+        // The endpoint can receive events from other Stripe integrations. Only
+        // a locally held Stripe reservation establishes checkout ownership.
+        const reservation = await db
+          .prepare("SELECT 1 FROM checkout_reservations WHERE public_id = ? AND payment_method = 'stripe'")
+          .bind(reservationId)
+          .first()
+          .catch((cause) => {
+            throw new WebhookLookupError('Stripe reservation lookup unavailable', { cause });
+          });
+        if (!reservation) return { type: event.type };
+      }
+
       if (
         event.type === 'checkout.session.expired' ||
         event.type === 'checkout.session.async_payment_failed'
       ) {
         return {
           type: event.type,
-          releaseReservationId: event.data.object.metadata?.reservation_id ?? undefined,
+          releaseReservationId: reservationId,
         };
       }
 
@@ -150,32 +175,12 @@ export function createStripeProvider(
         if (session.payment_status === 'unpaid') {
           return {
             type: event.type,
-            pendingReservationId: session.metadata?.reservation_id ?? undefined,
+            pendingReservationId: reservationId,
           };
         }
 
-        // Recover the line snapshot we stashed at checkout, if present.
-        let items;
-        const raw = session.metadata?.items;
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw) as Array<{
-              id: number;
-              q: number;
-              n: string;
-              p: number;
-              v?: number | null;
-            }>;
-            items = parsed.map((x) => ({
-              productId: x.id,
-              variantId: x.v ?? null,
-              name: x.n,
-              priceCents: x.p,
-              quantity: x.q,
-            }));
-          } catch {
-            // Malformed metadata — record the order header without line items.
-          }
+        if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
+          return { type: event.type };
         }
 
         // Shipping: amount charged + collected address (location varies by API
@@ -246,8 +251,8 @@ export function createStripeProvider(
           order: {
             providerSessionId: session.id,
             providerPaymentId: paymentIntentId,
-            publicId: session.metadata?.public_id ?? undefined,
-            reservationId: session.metadata?.reservation_id ?? undefined,
+            publicId: reservationId,
+            reservationId,
             email: session.customer_details?.email ?? null,
             amountTotalCents: session.amount_total ?? 0,
             shippingCents,
@@ -258,7 +263,6 @@ export function createStripeProvider(
             taxCents,
             shippingAddress,
             currency: session.currency ?? 'usd',
-            items,
           },
         };
       }

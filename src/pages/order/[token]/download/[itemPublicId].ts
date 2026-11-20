@@ -4,6 +4,7 @@ import { isAccessToken } from '../../../../features/ids/token.ts';
 import { parsePublicId } from '../../../../features/ids/publicId.ts';
 import { resolveAccessToken } from '../../../../features/orders/guestAccess.ts';
 import { getOrderByPublicId } from '../../../../features/orders/db.ts';
+import { isFullyRefunded } from '../../../../features/orders/refundState';
 import { getFileStorage } from '../../../../features/storage/index.ts';
 
 export const prerender = false;
@@ -33,9 +34,9 @@ export const GET: APIRoute = async ({ params }) => {
   if (!token || !isAccessToken(token) || !itemPublicId) return new Response('Not found', { status: 404, headers: PRIVATE_HEADERS });
   const access = await resolveAccessToken(env.DB, token);
   if (!access) return new Response('Not found', { status: 404, headers: PRIVATE_HEADERS });
-  const order = access ? await getOrderByPublicId(env.DB, access.order_public_id) : null;
+  const order = await getOrderByPublicId(env.DB, access.order_public_id);
   if (!order) return new Response('Payment is not settled.', { status: 403, headers: PRIVATE_HEADERS });
-  if (order.refunded_cents >= order.amount_total_cents) {
+  if (isFullyRefunded(order)) {
     return new Response('Downloads are unavailable for a fully refunded order.', { status: 403, headers: PRIVATE_HEADERS });
   }
   const item = await env.DB

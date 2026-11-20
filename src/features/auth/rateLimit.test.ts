@@ -7,7 +7,7 @@ import {
 } from './rateLimit';
 
 describe('rateLimitBucket', () => {
-  it.each(['/admin/login', '/account/login'])('limits auth POST %s', (path) => {
+  it.each(['/admin/login', '/admin/v1/auth/magic-link', '/account/login', '/account/verify'])('limits auth POST %s', (path) => {
     expect(rateLimitBucket('POST', path)).toBe('auth');
   });
 
@@ -35,6 +35,12 @@ it('scopes anonymous counters to host, route, and connecting client', () => {
   expect(anonymousRateLimitKey(request, '/api/checkout')).toBe(
     'shop.example:/api/checkout:203.0.113.7',
   );
+});
+
+it('shares the admin magic-link budget across both entry points', () => {
+  const request = new Request('https://shop.example/admin/v1/auth/magic-link');
+  expect(anonymousRateLimitKey(request, '/admin/v1/auth/magic-link'))
+    .toBe(anonymousRateLimitKey(request, '/admin/login'));
 });
 
 it('passes the scoped key to the Cloudflare binding and honors its decision', async () => {

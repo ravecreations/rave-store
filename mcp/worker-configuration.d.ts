@@ -7,11 +7,12 @@ interface __BaseEnv_Env {
 	STOREFRONT_URL: string;
 	MCP_RATE_LIMITER?: import("@cloudflare/workers-types").RateLimit;
 	STORE_MCP: DurableObjectNamespace<import("./src/index").StoreMcp>;
+	STORE_MCP_BUYER: DurableObjectNamespace<import("./src/index").BuyerStoreMcp>;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
 		mainModule: typeof import("./src/index");
-		durableNamespaces: "StoreMcp";
+		durableNamespaces: "StoreMcp" | "BuyerStoreMcp";
 	}
 	interface Env extends __BaseEnv_Env {}
 }

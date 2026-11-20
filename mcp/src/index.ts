@@ -462,21 +462,15 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
         const cur = await resolveProduct(db, id);
         if (cur === 'numeric') return result(NUMERIC_PRODUCT_ERROR);
         if (!cur) return result(`No product with id ${id}.`);
-        const input: ProductInput = {
-          name: name ?? cur.name,
-          slug: cur.slug,
-          description: description !== undefined ? description : cur.description,
-          price_cents: price_cents ?? cur.price_cents,
-          currency: currency ?? cur.currency,
-          image_key: cur.image_key,
-          stock: stock ?? cur.stock,
-          active: active !== undefined ? (active ? 1 : 0) : cur.active,
-          // Not editable here, but must be carried: updateProduct writes every
-          // column, so omitting these would silently clear them.
-          weight_grams: cur.weight_grams,
-          requires_shipping: cur.requires_shipping,
-        };
-        await updateProduct(db, cur.id, input);
+        const updated = await updateProduct(db, cur.id, {
+          name,
+          description,
+          price_cents,
+          currency,
+          stock,
+          active: active === undefined ? undefined : Number(active),
+        });
+        if (!updated) return { ...result('This product no longer exists.'), isError: true };
         return result({ id: requirePublicId(cur.public_id, cur.id, 'product'), slug: cur.slug });
       },
     );
@@ -499,12 +493,25 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
         if (!publicId) return result(`Invalid order id ${id} — expected an ord_… public ID.`);
         const order = await getOrderByPublicId(db, publicId);
         if (!order) return result(`No order with id ${id}.`);
-        await fulfillOrder(db, order.id, carrier ?? null, tracking_number ?? null);
+        if (!(await fulfillOrder(db, order.id, carrier ?? null, tracking_number ?? null))) {
+          return {
+            ...result('The order could not be fulfilled. Check whether it still exists and whether a label purchase is in progress or awaiting reconciliation.'),
+            isError: true,
+          };
+        }
         return result({ fulfilled: publicId, reference: orderReference(publicId) });
       },
     );
   }
 }
+
+// A separate class gives the buyer tier its own Durable Object namespace. The
+// original namespace is reachable only with a valid operator token, including
+// for session resumption and deletion.
+export class BuyerStoreMcp extends StoreMcp {}
+
+const buyerMcp = BuyerStoreMcp.serve('/mcp', { binding: 'STORE_MCP_BUYER' });
+const operatorMcp = StoreMcp.serve('/mcp', { binding: 'STORE_MCP' });
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -557,11 +564,15 @@ export default {
         }
       }
 
+      if (!operator && !('STORE_MCP_BUYER' in env)) {
+        return new Response('Buyer tools unavailable: configure STORE_MCP_BUYER.', { status: 503 });
+      }
+
       // The SDK reads session props off the ExecutionContext (the same channel the
       // Workers OAuth Provider uses). Cloudflare's types declare `props` readonly,
       // so assign through Object.assign rather than casting the readonly away.
       Object.assign(ctx, { props: { operator } satisfies SessionProps });
-      return StoreMcp.serve('/mcp', { binding: 'STORE_MCP' }).fetch(request, env, ctx);
+      return (operator ? operatorMcp : buyerMcp).fetch(request, env, ctx);
     }
 
     return new Response(
