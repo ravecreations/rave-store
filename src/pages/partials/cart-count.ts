@@ -1,5 +1,5 @@
-import type { APIRoute } from 'astro';
-import { cartCount, readCart } from '../../features/cart/cart';
+import type { APIRoute } from "astro";
+import { cartCount, readCart } from "../../features/cart/cart";
 
 export const prerender = false;
 
@@ -11,5 +11,5 @@ export const prerender = false;
 export const GET: APIRoute = ({ cookies }) =>
   Response.json(
     { count: cartCount(readCart(cookies)) },
-    { headers: { 'cache-control': 'private, no-store' } },
+    { headers: { "cache-control": "private, no-store" } },
   );

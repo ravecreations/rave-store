@@ -11,10 +11,10 @@
  * Local dev uses Cloudflare's documented TEST keys (always-pass). Swap for a real
  * widget's sitekey + secret at deploy.
  */
-const VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 /** The form field Turnstile injects into the surrounding form. */
-export const TURNSTILE_FIELD = 'cf-turnstile-response';
+export const TURNSTILE_FIELD = "cf-turnstile-response";
 
 /**
  * Apply the configured policy for a protected form. A missing secret must not
@@ -43,13 +43,13 @@ export async function verifyTurnstileToken(
 ): Promise<boolean> {
   if (!token) return false;
   const body = new URLSearchParams();
-  body.set('secret', secret);
-  body.set('response', token);
-  if (remoteIp) body.set('remoteip', remoteIp);
+  body.set("secret", secret);
+  body.set("response", token);
+  if (remoteIp) body.set("remoteip", remoteIp);
   try {
     const res = await fetch(VERIFY_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
       body,
     });
     if (!res.ok) return false;

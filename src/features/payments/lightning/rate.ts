@@ -4,7 +4,7 @@
  * price at invoice time. Cached briefly per-currency to avoid a price call on
  * every checkout. Source is config-driven (default Coinbase spot — no API key).
  */
-import { minorUnitsPerMajor } from '../../../money';
+import { minorUnitsPerMajor } from "../../../money";
 
 interface CachedRate {
   fiatPerBtc: number;
@@ -29,8 +29,8 @@ export async function getBtcRate(currency: string, rateUrl: string): Promise<num
   const hit = cache.get(cur);
   if (hit && Date.now() - hit.at < RATE_TTL_MS) return hit.fiatPerBtc;
 
-  const url = rateUrl.replace('{currency}', cur);
-  const res = await fetch(url, { headers: { accept: 'application/json' } });
+  const url = rateUrl.replace("{currency}", cur);
+  const res = await fetch(url, { headers: { accept: "application/json" } });
   if (!res.ok) throw new Error(`BTC rate fetch failed: ${res.status}`);
   const body = (await res.json()) as { data?: { amount?: string } };
   const fiatPerBtc = Number(body?.data?.amount);

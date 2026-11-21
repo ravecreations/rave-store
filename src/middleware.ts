@@ -1,35 +1,25 @@
-import { defineMiddleware } from 'astro:middleware';
-import type { APIContext, MiddlewareNext } from 'astro';
-import { env } from 'cloudflare:workers';
-import { tenantApiFetch } from './features/auth/tenant-api';
+import { defineMiddleware } from "astro:middleware";
+import type { APIContext, MiddlewareNext } from "astro";
+import { env } from "cloudflare:workers";
+import { tenantApiFetch } from "./features/auth/tenant-api";
 import {
   authorizeTenantAdmin,
   getTenantRuntimeSession,
   type TenantAuthorizationDecision,
   type TenantRuntimeSession,
-} from './features/auth/tenant-identity';
-import {
-  getStoreSettings,
-  parseStoreSettings,
-  STORE_SETTINGS_SQL,
-} from './features/settings/db';
+} from "./features/auth/tenant-identity";
+import { getStoreSettings, parseStoreSettings, STORE_SETTINGS_SQL } from "./features/settings/db";
 import {
   MENU_ITEMS_SQL,
   EMPTY_MENUS,
   groupMenus,
   type MenuItemRow,
-} from './features/navigation/db';
-import {
-  checkRateLimit,
-  rateLimitBucket,
-  rateLimitedResponse,
-} from './features/auth/rateLimit';
-import {
-  responseCacheControl,
-} from './features/cache/public';
-import { addCacheTags, responseCacheTags } from './features/cache/tags';
-import { normalizeSearchQuery } from './features/search/query';
-import { isForbiddenFormOrigin } from './features/auth/formOrigin';
+} from "./features/navigation/db";
+import { checkRateLimit, rateLimitBucket, rateLimitedResponse } from "./features/auth/rateLimit";
+import { responseCacheControl } from "./features/cache/public";
+import { addCacheTags, responseCacheTags } from "./features/cache/tags";
+import { normalizeSearchQuery } from "./features/search/query";
+import { isForbiddenFormOrigin } from "./features/auth/formOrigin";
 
 /**
  * Admin auth gate. The shared API gateway validates the host-only identity session and the
@@ -38,10 +28,10 @@ import { isForbiddenFormOrigin } from './features/auth/formOrigin';
  */
 function isProtected(pathname: string): boolean {
   return (
-    pathname === '/admin' ||
-    pathname.startsWith('/admin/') ||
-    pathname === '/api/admin' ||
-    pathname.startsWith('/api/admin/')
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/api/admin" ||
+    pathname.startsWith("/api/admin/")
   );
 }
 
@@ -51,14 +41,12 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   // static assets skip it (one indexed D1 read per page, not per asset/API call).
   const path = context.url.pathname;
   const isDocument =
-    !path.startsWith('/api/') &&
-    !path.startsWith('/_') &&
-    !path.startsWith('/partials/');
+    !path.startsWith("/api/") && !path.startsWith("/_") && !path.startsWith("/partials/");
   if (isDocument) {
     // Storefront documents also need the header/footer menus. Both reads go in
     // ONE batch so /cart, /checkout, /account, /order, and /pay — which are never
     // edge-cached — don't pay a second D1 round trip.
-    const wantsMenus = !path.startsWith('/admin');
+    const wantsMenus = !path.startsWith("/admin");
     try {
       if (wantsMenus) {
         const [settings, menus] = await env.DB.batch<Record<string, string>>([
@@ -96,11 +84,11 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   // loaded and setup_complete isn't set.
   if (
     isDocument &&
-    !path.startsWith('/admin') &&
+    !path.startsWith("/admin") &&
     context.locals.settings &&
     !context.locals.settings.setupComplete
   ) {
-    return context.redirect('/admin/setup', 302);
+    return context.redirect("/admin/setup", 302);
   }
 
   // Throttle anonymous, resource-spending mutations and cache-missing searches.
@@ -108,18 +96,18 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   const bucket = rateLimitBucket(
     context.request.method,
     path,
-    normalizeSearchQuery(context.url.searchParams.get('q') ?? '') !== '',
+    normalizeSearchQuery(context.url.searchParams.get("q") ?? "") !== "",
   );
   if (bucket) {
     const limiter =
-      bucket === 'auth'
+      bucket === "auth"
         ? env.AUTH_RATE_LIMITER
-        : bucket === 'checkout'
+        : bucket === "checkout"
           ? env.CHECKOUT_RATE_LIMITER
           : env.SEARCH_RATE_LIMITER;
     try {
       if (!(await checkRateLimit(limiter, context.request, path))) {
-        console.warn(JSON.stringify({ event: 'rate_limited', bucket, path }));
+        console.warn(JSON.stringify({ event: "rate_limited", bucket, path }));
         return rateLimitedResponse(path);
       }
     } catch (error) {
@@ -127,7 +115,7 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
       // failures remain visible in Workers Logs for operational follow-up.
       console.error(
         JSON.stringify({
-          event: 'rate_limit_error',
+          event: "rate_limit_error",
           bucket,
           path,
           message: error instanceof Error ? error.message : String(error),
@@ -137,12 +125,12 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   }
 
   if (
-    path === '/admin/v1/auth/magic-link' ||
-    path === '/admin/v1/auth/verify' ||
-    path === '/admin/v1/auth/logout'
+    path === "/admin/v1/auth/magic-link" ||
+    path === "/admin/v1/auth/verify" ||
+    path === "/admin/v1/auth/logout"
   ) {
-    if (path !== '/admin/v1/auth/verify' && context.request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405, headers: { Allow: 'POST' } });
+    if (path !== "/admin/v1/auth/verify" && context.request.method !== "POST") {
+      return new Response("Method not allowed", { status: 405, headers: { Allow: "POST" } });
     }
     return tenantApiFetch(context.request, env);
   }
@@ -166,45 +154,45 @@ async function gate(context: APIContext, next: MiddlewareNext): Promise<Response
   try {
     session = await getTenantRuntimeSession(context.request, env, preserveIdentityCookies);
   } catch {
-    if (path === '/admin/login') {
+    if (path === "/admin/login") {
       context.locals.authServiceUnavailable = true;
       return next();
     }
-    return new Response('Identity service unavailable.', { status: 503 });
+    return new Response("Identity service unavailable.", { status: 503 });
   }
 
   if (!session.authenticated || !session.user) {
-    if (path === '/admin/login') return next();
-    if (path.startsWith('/api/')) {
-      return new Response('Authentication required.', { status: 401 });
+    if (path === "/admin/login") return next();
+    if (path.startsWith("/api/")) {
+      return new Response("Authentication required.", { status: 401 });
     }
-    return context.redirect('/admin/login', 303);
+    return context.redirect("/admin/login", 303);
   }
 
   let authorization: TenantAuthorizationDecision;
   try {
     authorization = await authorizeTenantAdmin(context.request, env, preserveIdentityCookies);
   } catch {
-    return new Response('Authorization service unavailable.', { status: 503 });
+    return new Response("Authorization service unavailable.", { status: 503 });
   }
 
-  if (!authorization.allowed || !['owner', 'manager'].includes(authorization.role ?? '')) {
-    if (path === '/admin/login') {
+  if (!authorization.allowed || !["owner", "manager"].includes(authorization.role ?? "")) {
+    if (path === "/admin/login") {
       context.locals.authServiceUnavailable = false;
       return next();
     }
-    return new Response('Access denied.', { status: 403 });
+    return new Response("Access denied.", { status: 403 });
   }
 
   context.locals.adminEmail = session.user.email;
   context.locals.adminAuthenticated = true;
-  if (path === '/admin/login') return context.redirect('/admin', 303);
+  if (path === "/admin/login") return context.redirect("/admin", 303);
   return next();
 }
 
 async function route(context: APIContext, next: MiddlewareNext): Promise<Response> {
   const path = context.url.pathname;
-  const productError = path.startsWith('/products/') && context.url.searchParams.has('error');
+  const productError = path.startsWith("/products/") && context.url.searchParams.has("error");
 
   let response = isForbiddenFormOrigin(context.request, context.url)
     ? new Response(`Cross-site ${context.request.method} form submissions are forbidden`, {
@@ -215,7 +203,7 @@ async function route(context: APIContext, next: MiddlewareNext): Promise<Respons
   const identityCookies = context.locals.identitySetCookies ?? [];
   if (identityCookies.length > 0) {
     const headers = new Headers(response.headers);
-    for (const cookie of identityCookies) headers.append('Set-Cookie', cookie);
+    for (const cookie of identityCookies) headers.append("Set-Cookie", cookie);
     response = new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
@@ -228,12 +216,12 @@ async function route(context: APIContext, next: MiddlewareNext): Promise<Respons
   const cacheControl = responseCacheControl(
     path,
     response.status,
-    response.headers.get('cache-control'),
+    response.headers.get("cache-control"),
     productError,
   );
-  if (response.headers.get('cache-control') !== cacheControl) {
+  if (response.headers.get("cache-control") !== cacheControl) {
     try {
-      response.headers.set('cache-control', cacheControl);
+      response.headers.set("cache-control", cacheControl);
     } catch {
       // Redirect responses can have immutable headers.
       response = new Response(response.body, {
@@ -241,7 +229,7 @@ async function route(context: APIContext, next: MiddlewareNext): Promise<Respons
         statusText: response.statusText,
         headers: new Headers(response.headers),
       });
-      response.headers.set('cache-control', cacheControl);
+      response.headers.set("cache-control", cacheControl);
     }
   }
 
@@ -266,9 +254,9 @@ async function route(context: APIContext, next: MiddlewareNext): Promise<Respons
 
 // Response hardening for a store on a real domain. Applied to EVERY response.
 const SECURITY_HEADERS: Record<string, string> = {
-  'x-content-type-options': 'nosniff', // don't MIME-sniff responses
-  'x-frame-options': 'DENY', // block framing (clickjacking) — nothing here is meant to be embedded
-  'strict-transport-security': 'max-age=31536000; includeSubDomains', // force HTTPS for a year
+  "x-content-type-options": "nosniff", // don't MIME-sniff responses
+  "x-frame-options": "DENY", // block framing (clickjacking) — nothing here is meant to be embedded
+  "strict-transport-security": "max-age=31536000; includeSubDomains", // force HTTPS for a year
 };
 
 /** Add the security headers, rebuilding when the response's headers are immutable

@@ -1,5 +1,5 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import { withPublicId } from '../ids/publicId.ts';
+import type { D1Database } from "@cloudflare/workers-types";
+import { withPublicId } from "../ids/publicId.ts";
 
 export interface Product {
   id: number;
@@ -51,12 +51,10 @@ export async function listProducts(
   db: D1Database,
   limit: number,
   offset = 0,
-  orderBy = 'created_at DESC',
+  orderBy = "created_at DESC",
 ): Promise<Product[]> {
   const { results } = await db
-    .prepare(
-      `SELECT * FROM products WHERE active = 1 ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-    )
+    .prepare(`SELECT * FROM products WHERE active = 1 ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
     .bind(limit, offset)
     .all<Product>();
   return results ?? [];
@@ -65,7 +63,7 @@ export async function listProducts(
 /** Total active products (for pagination). */
 export async function countProducts(db: D1Database): Promise<number> {
   const row = await db
-    .prepare('SELECT COUNT(*) AS n FROM products WHERE active = 1')
+    .prepare("SELECT COUNT(*) AS n FROM products WHERE active = 1")
     .first<{ n: number }>();
   return row?.n ?? 0;
 }
@@ -88,13 +86,13 @@ export interface ProductFilter {
   where: string;
   params: string[];
 }
-const EMPTY_PRODUCT_FILTER: ProductFilter = { where: '', params: [] };
+const EMPTY_PRODUCT_FILTER: ProductFilter = { where: "", params: [] };
 
 export async function listAllProducts(
   db: D1Database,
   limit: number,
   offset = 0,
-  orderBy = 'created_at DESC',
+  orderBy = "created_at DESC",
   filter: ProductFilter = EMPTY_PRODUCT_FILTER,
 ): Promise<AdminProduct[]> {
   const { results } = await db
@@ -140,7 +138,7 @@ export async function listProductsAfterId(
   limit: number,
 ): Promise<Product[]> {
   const { results } = await db
-    .prepare('SELECT * FROM products WHERE id > ? ORDER BY id ASC LIMIT ?')
+    .prepare("SELECT * FROM products WHERE id > ? ORDER BY id ASC LIMIT ?")
     .bind(afterId, limit)
     .all<Product>();
   return results ?? [];
@@ -174,14 +172,14 @@ export async function setRelatedIds(
   ids: number[],
 ): Promise<void> {
   await db
-    .prepare('UPDATE products SET related_ids = ? WHERE id = ?')
+    .prepare("UPDATE products SET related_ids = ? WHERE id = ?")
     .bind(JSON.stringify(ids), productId)
     .run();
 }
 
 export async function getProductsByIds(db: D1Database, ids: number[]): Promise<Product[]> {
   if (ids.length === 0) return [];
-  const placeholders = ids.map(() => '?').join(',');
+  const placeholders = ids.map(() => "?").join(",");
   const { results } = await db
     .prepare(`SELECT * FROM products WHERE id IN (${placeholders}) AND active = 1`)
     .bind(...ids)
@@ -210,7 +208,7 @@ export async function getProductsByPublicIds(
 }
 
 export async function getProduct(db: D1Database, id: number): Promise<Product | null> {
-  return db.prepare('SELECT * FROM products WHERE id = ?').bind(id).first<Product>();
+  return db.prepare("SELECT * FROM products WHERE id = ?").bind(id).first<Product>();
 }
 
 /** Active products at or below a stock threshold, lowest first (for the dashboard). */
@@ -221,7 +219,7 @@ export async function lowStockProducts(
 ): Promise<Product[]> {
   const { results } = await db
     .prepare(
-      'SELECT * FROM products WHERE active = 1 AND stock <= ? ORDER BY stock ASC, name LIMIT ?',
+      "SELECT * FROM products WHERE active = 1 AND stock <= ? ORDER BY stock ASC, name LIMIT ?",
     )
     .bind(threshold, limit)
     .all<Product>();
@@ -244,7 +242,7 @@ export async function listProductImages(
   productId: number,
 ): Promise<ProductImageRow[]> {
   const { results } = await db
-    .prepare('SELECT * FROM product_images WHERE product_id = ? ORDER BY position, id')
+    .prepare("SELECT * FROM product_images WHERE product_id = ? ORDER BY position, id")
     .bind(productId)
     .all<ProductImageRow>();
   return results ?? [];
@@ -257,12 +255,14 @@ export async function addProductImage(
   imageKey: string,
 ): Promise<void> {
   const row = await db
-    .prepare('SELECT COALESCE(MAX(position), -1) AS m FROM product_images WHERE product_id = ?')
+    .prepare("SELECT COALESCE(MAX(position), -1) AS m FROM product_images WHERE product_id = ?")
     .bind(productId)
     .first<{ m: number }>();
-  await withPublicId('productImage', (publicId) =>
+  await withPublicId("productImage", (publicId) =>
     db
-      .prepare('INSERT INTO product_images (product_id, image_key, position, public_id) VALUES (?, ?, ?, ?)')
+      .prepare(
+        "INSERT INTO product_images (product_id, image_key, position, public_id) VALUES (?, ?, ?, ?)",
+      )
       .bind(productId, imageKey, (row?.m ?? -1) + 1, publicId)
       .run(),
   );
@@ -272,11 +272,14 @@ export async function getProductImage(
   db: D1Database,
   imageId: number,
 ): Promise<ProductImageRow | null> {
-  return db.prepare('SELECT * FROM product_images WHERE id = ?').bind(imageId).first<ProductImageRow>();
+  return db
+    .prepare("SELECT * FROM product_images WHERE id = ?")
+    .bind(imageId)
+    .first<ProductImageRow>();
 }
 
 export async function deleteProductImageRow(db: D1Database, imageId: number): Promise<void> {
-  await db.prepare('DELETE FROM product_images WHERE id = ?').bind(imageId).run();
+  await db.prepare("DELETE FROM product_images WHERE id = ?").bind(imageId).run();
 }
 
 /** Keep gallery references valid when the legacy single-image update path replaces a key. */
@@ -287,9 +290,7 @@ export async function replaceProductImageKey(
   newKey: string,
 ): Promise<void> {
   await db
-    .prepare(
-      'UPDATE product_images SET image_key = ? WHERE product_id = ? AND image_key = ?',
-    )
+    .prepare("UPDATE product_images SET image_key = ? WHERE product_id = ? AND image_key = ?")
     .bind(newKey, productId, oldKey)
     .run();
 }
@@ -301,7 +302,7 @@ export async function setProductImageAlt(
   alt: string,
 ): Promise<void> {
   await db
-    .prepare('UPDATE product_images SET alt = ? WHERE id = ?')
+    .prepare("UPDATE product_images SET alt = ? WHERE id = ?")
     .bind(alt.trim() || null, imageId)
     .run();
 }
@@ -310,28 +311,32 @@ export async function setProductImageAlt(
 export async function moveProductImage(
   db: D1Database,
   imageId: number,
-  direction: 'up' | 'down',
+  direction: "up" | "down",
 ): Promise<void> {
   const img = await getProductImage(db, imageId);
   if (!img) return;
   const neighbor =
-    direction === 'up'
+    direction === "up"
       ? await db
           .prepare(
-            'SELECT * FROM product_images WHERE product_id = ? AND position < ? ORDER BY position DESC LIMIT 1',
+            "SELECT * FROM product_images WHERE product_id = ? AND position < ? ORDER BY position DESC LIMIT 1",
           )
           .bind(img.product_id, img.position)
           .first<ProductImageRow>()
       : await db
           .prepare(
-            'SELECT * FROM product_images WHERE product_id = ? AND position > ? ORDER BY position ASC LIMIT 1',
+            "SELECT * FROM product_images WHERE product_id = ? AND position > ? ORDER BY position ASC LIMIT 1",
           )
           .bind(img.product_id, img.position)
           .first<ProductImageRow>();
   if (!neighbor) return; // already at the top/bottom
   await db.batch([
-    db.prepare('UPDATE product_images SET position = ? WHERE id = ?').bind(neighbor.position, img.id),
-    db.prepare('UPDATE product_images SET position = ? WHERE id = ?').bind(img.position, neighbor.id),
+    db
+      .prepare("UPDATE product_images SET position = ? WHERE id = ?")
+      .bind(neighbor.position, img.id),
+    db
+      .prepare("UPDATE product_images SET position = ? WHERE id = ?")
+      .bind(img.position, neighbor.id),
   ]);
 }
 
@@ -348,7 +353,7 @@ export async function reorderProductImages(
   await db.batch(
     ids.map((id, idx) =>
       db
-        .prepare('UPDATE product_images SET position = ? WHERE id = ? AND product_id = ?')
+        .prepare("UPDATE product_images SET position = ? WHERE id = ? AND product_id = ?")
         .bind(idx, id, productId),
     ),
   );
@@ -360,7 +365,10 @@ export async function setPrimaryImage(
   productId: number,
   imageKey: string | null,
 ): Promise<void> {
-  await db.prepare('UPDATE products SET image_key = ? WHERE id = ?').bind(imageKey, productId).run();
+  await db
+    .prepare("UPDATE products SET image_key = ? WHERE id = ?")
+    .bind(imageKey, productId)
+    .run();
 }
 
 /**
@@ -385,25 +393,40 @@ export async function makeImagePrimary(
 }
 
 /** Product by its prefixed public ID (boundary resolution; null if missing). */
-export async function getProductByPublicId(db: D1Database, publicId: string): Promise<Product | null> {
-  return db.prepare('SELECT * FROM products WHERE public_id = ?').bind(publicId).first<Product>();
+export async function getProductByPublicId(
+  db: D1Database,
+  publicId: string,
+): Promise<Product | null> {
+  return db.prepare("SELECT * FROM products WHERE public_id = ?").bind(publicId).first<Product>();
 }
 
 /** Single product by public slug, or null if missing. */
 export async function getProductBySlug(db: D1Database, slug: string): Promise<Product | null> {
-  return db.prepare('SELECT * FROM products WHERE slug = ?').bind(slug).first<Product>();
+  return db.prepare("SELECT * FROM products WHERE slug = ?").bind(slug).first<Product>();
 }
 
 /** Insert a product and return its new id (needed for category links). */
 export async function createProduct(db: D1Database, p: ProductInput): Promise<number> {
-  return withPublicId('product', async (publicId) => {
+  return withPublicId("product", async (publicId) => {
     const row = await db
       .prepare(
         `INSERT INTO products (name, slug, description, price_cents, currency, image_key, stock, active, weight_grams, requires_shipping, public_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          RETURNING id`,
       )
-      .bind(p.name, p.slug, p.description, p.price_cents, p.currency, p.image_key, p.stock, p.active, p.weight_grams, p.requires_shipping, publicId)
+      .bind(
+        p.name,
+        p.slug,
+        p.description,
+        p.price_cents,
+        p.currency,
+        p.image_key,
+        p.stock,
+        p.active,
+        p.weight_grams,
+        p.requires_shipping,
+        publicId,
+      )
       .first<{ id: number }>();
     return row!.id;
   });
@@ -411,17 +434,28 @@ export async function createProduct(db: D1Database, p: ProductInput): Promise<nu
 
 type ProductUpdate = Partial<ProductFields & { slug: string }>;
 const PRODUCT_UPDATE_FIELDS = [
-  'name', 'slug', 'description', 'price_cents', 'currency', 'stock', 'active',
-  'weight_grams', 'requires_shipping',
+  "name",
+  "slug",
+  "description",
+  "price_cents",
+  "currency",
+  "stock",
+  "active",
+  "weight_grams",
+  "requires_shipping",
 ] as const satisfies readonly (keyof ProductUpdate)[];
 
-export async function updateProduct(db: D1Database, id: number, patch: ProductUpdate): Promise<boolean> {
+export async function updateProduct(
+  db: D1Database,
+  id: number,
+  patch: ProductUpdate,
+): Promise<boolean> {
   // Keep concurrent edits to omitted fields and leave image association writes
   // to the guarded media routes.
   const fields = PRODUCT_UPDATE_FIELDS.filter((field) => patch[field] !== undefined);
   if (fields.length === 0) return true;
   const result = await db
-    .prepare(`UPDATE products SET ${fields.map((field) => `${field} = ?`).join(', ')} WHERE id = ?`)
+    .prepare(`UPDATE products SET ${fields.map((field) => `${field} = ?`).join(", ")} WHERE id = ?`)
     .bind(...fields.map((field) => patch[field]), id)
     .run();
   return (result.meta?.changes ?? 0) > 0;
@@ -445,8 +479,8 @@ export async function setProductFile(
 export async function deleteProduct(db: D1Database, id: number): Promise<void> {
   // Clear category links first (FKs aren't enforced on D1).
   await db.batch([
-    db.prepare('DELETE FROM product_categories WHERE product_id = ?').bind(id),
-    db.prepare('DELETE FROM product_images WHERE product_id = ?').bind(id),
-    db.prepare('DELETE FROM products WHERE id = ?').bind(id),
+    db.prepare("DELETE FROM product_categories WHERE product_id = ?").bind(id),
+    db.prepare("DELETE FROM product_images WHERE product_id = ?").bind(id),
+    db.prepare("DELETE FROM products WHERE id = ?").bind(id),
   ]);
 }

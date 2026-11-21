@@ -1,19 +1,14 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { getConfig } from '../../../config';
-import {
-  listMedia,
-  countMedia,
-  MEDIA_PAGE_SIZE,
-  type Media,
-} from '../../../features/media/db';
-import { mediaUsageForIds, isUnused } from '../../../features/media/usage';
-import { mediaUrl } from '../../../features/media/url';
-import { uploadMedia, validateUpload } from '../../../features/media/upload';
-import { optimizeUpload } from '../../../features/products/imageOptimize';
-import { prewarmImageTransforms } from '../../../features/products/image';
-import { getSetting } from '../../../features/settings/db';
-import { getStorage } from '../../../features/storage';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
+import { getConfig } from "../../../config";
+import { listMedia, countMedia, MEDIA_PAGE_SIZE, type Media } from "../../../features/media/db";
+import { mediaUsageForIds, isUnused } from "../../../features/media/usage";
+import { mediaUrl } from "../../../features/media/url";
+import { uploadMedia, validateUpload } from "../../../features/media/upload";
+import { optimizeUpload } from "../../../features/products/imageOptimize";
+import { prewarmImageTransforms } from "../../../features/products/image";
+import { getSetting } from "../../../features/settings/db";
+import { getStorage } from "../../../features/storage";
 
 export const prerender = false;
 
@@ -22,8 +17,8 @@ export function parseMediaListQuery(params: URLSearchParams): {
   limit: number;
   offset: number;
 } {
-  const rawLimit = Number(params.get('limit'));
-  const rawOffset = Number(params.get('offset'));
+  const rawLimit = Number(params.get("limit"));
+  const rawOffset = Number(params.get("offset"));
   const limit =
     Number.isFinite(rawLimit) && rawLimit > 0
       ? Math.min(Math.floor(rawLimit), MEDIA_PAGE_SIZE)
@@ -93,8 +88,8 @@ export const GET: APIRoute = async ({ url }) => {
     }),
     {
       headers: {
-        'content-type': 'application/json; charset=utf-8',
-        'cache-control': 'private, no-store',
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "private, no-store",
       },
     },
   );
@@ -104,18 +99,18 @@ export const GET: APIRoute = async ({ url }) => {
 // Answers JSON to the picker (fetch) and redirects for a plain form post.
 export const POST: APIRoute = async ({ request, redirect, locals }) => {
   const form = await request.formData();
-  const wantsJson = request.headers.get('accept')?.includes('application/json');
-  const files = form.getAll('files').filter((f): f is File => f instanceof File && f.size > 0);
+  const wantsJson = request.headers.get("accept")?.includes("application/json");
+  const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
 
   const fail = (msg: string, status = 400) =>
     wantsJson
       ? new Response(JSON.stringify({ error: msg }), {
           status,
-          headers: { 'content-type': 'application/json', 'cache-control': 'private, no-store' },
+          headers: { "content-type": "application/json", "cache-control": "private, no-store" },
         })
       : redirect(`/admin/media?error=${encodeURIComponent(msg)}`, 303);
 
-  if (files.length === 0) return fail('Choose at least one image.');
+  if (files.length === 0) return fail("Choose at least one image.");
 
   // Validate everything before storing anything, so a bad file in a multi-select
   // doesn't leave half the batch uploaded.
@@ -146,17 +141,17 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
     const transformOrigin = new URL(request.url).origin;
     ctx.waitUntil(
       (async () => {
-        if ((await getSetting(env.DB, 'image_delivery')) !== 'cloudflare') return;
+        if ((await getSetting(env.DB, "image_delivery")) !== "cloudflare") return;
         for (const m of uploaded) {
           await prewarmImageTransforms(m.imageKey, baseUrl, transformOrigin);
         }
-      })().catch((err) => console.error('Image pre-warm failed:', err)),
+      })().catch((err) => console.error("Image pre-warm failed:", err)),
     );
   }
 
   return wantsJson
     ? new Response(JSON.stringify({ media: uploaded }), {
-        headers: { 'content-type': 'application/json', 'cache-control': 'private, no-store' },
+        headers: { "content-type": "application/json", "cache-control": "private, no-store" },
       })
-    : redirect('/admin/media', 303);
+    : redirect("/admin/media", 303);
 };

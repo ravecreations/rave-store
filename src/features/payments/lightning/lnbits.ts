@@ -4,8 +4,8 @@ import type {
   Invoice,
   IncomingStatus,
   LightningWebhookEvent,
-} from './backend';
-import { POLL_TIMEOUT_MS } from './backend';
+} from "./backend";
+import { POLL_TIMEOUT_MS } from "./backend";
 
 /**
  * LNbits backend — works against a self-hosted instance or a hosted/community
@@ -19,11 +19,11 @@ import { POLL_TIMEOUT_MS } from './backend';
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function createLnbitsBackend(baseUrl: string, apiKey: string): LightningBackend {
-  const base = baseUrl.replace(/\/+$/, '');
-  const headers = { 'X-Api-Key': apiKey, 'content-type': 'application/json' };
+  const base = baseUrl.replace(/\/+$/, "");
+  const headers = { "X-Api-Key": apiKey, "content-type": "application/json" };
 
   return {
-    name: 'lnbits',
+    name: "lnbits",
 
     async createInvoice(p: CreateInvoiceParams): Promise<Invoice> {
       const body = JSON.stringify({
@@ -39,11 +39,11 @@ export function createLnbitsBackend(baseUrl: string, apiKey: string): LightningB
       // a brief outage becomes a short delay, not a failed checkout. A 4xx is a
       // request/auth problem, so it's thrown immediately without retrying.
       const MAX_ATTEMPTS = 3;
-      let lastError = 'unknown';
+      let lastError = "unknown";
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         let res: Response;
         try {
-          res = await fetch(`${base}/api/v1/payments`, { method: 'POST', headers, body });
+          res = await fetch(`${base}/api/v1/payments`, { method: "POST", headers, body });
         } catch (e) {
           lastError = e instanceof Error ? e.message : String(e);
           if (attempt < MAX_ATTEMPTS) {
@@ -55,7 +55,7 @@ export function createLnbitsBackend(baseUrl: string, apiKey: string): LightningB
         if (res.ok) {
           const j = (await res.json()) as { payment_hash?: string; payment_request?: string };
           if (!j.payment_request || !j.payment_hash) {
-            throw new Error('LNbits: malformed invoice response');
+            throw new Error("LNbits: malformed invoice response");
           }
           return { bolt11: j.payment_request, paymentHash: j.payment_hash };
         }
@@ -72,7 +72,7 @@ export function createLnbitsBackend(baseUrl: string, apiKey: string): LightningB
     async getIncoming(paymentHash: string): Promise<IncomingStatus> {
       // Bounded like phoenixd's — see POLL_TIMEOUT_MS in backend.ts.
       const res = await fetch(`${base}/api/v1/payments/${encodeURIComponent(paymentHash)}`, {
-        headers: { 'X-Api-Key': apiKey },
+        headers: { "X-Api-Key": apiKey },
         signal: AbortSignal.timeout(POLL_TIMEOUT_MS),
       });
       if (res.status === 404) return { paid: false };
@@ -83,7 +83,7 @@ export function createLnbitsBackend(baseUrl: string, apiKey: string): LightningB
 
     async verifyWebhook(payload: string): Promise<LightningWebhookEvent> {
       const j = JSON.parse(payload) as { payment_hash?: string; paid?: boolean };
-      if (!j.payment_hash) throw new Error('LNbits: webhook missing payment_hash');
+      if (!j.payment_hash) throw new Error("LNbits: webhook missing payment_hash");
       // Unsigned — `paid` is only a hint; the provider re-polls to confirm.
       return { paymentHash: j.payment_hash, paid: j.paid !== false };
     },

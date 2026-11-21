@@ -12,24 +12,24 @@
 
 /** One entry per externally addressable record type. Prefixes are permanent. */
 export const PUBLIC_ID_PREFIXES = {
-  product: 'prod',
-  variant: 'var',
-  extra: 'xtra',
-  category: 'cat',
-  page: 'page',
-  order: 'ord',
-  media: 'med',
-  productImage: 'pimg',
-  navItem: 'nav',
-  refund: 'rfnd',
-  orderItem: 'itm',
-  inventoryException: 'iexc',
+  product: "prod",
+  variant: "var",
+  extra: "xtra",
+  category: "cat",
+  page: "page",
+  order: "ord",
+  media: "med",
+  productImage: "pimg",
+  navItem: "nav",
+  refund: "rfnd",
+  orderItem: "itm",
+  inventoryException: "iexc",
 } as const;
 
 export type PublicIdKind = keyof typeof PUBLIC_ID_PREFIXES;
 
 /** Lowercase Crockford base32 — no i, l, o, u. */
-export const PUBLIC_ID_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
+export const PUBLIC_ID_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz";
 
 export const PUBLIC_ID_TOKEN_LENGTH = 10;
 
@@ -38,7 +38,7 @@ const TOKEN_RE = /^[0-9abcdefghjkmnpqrstvwxyz]{10}$/;
 /** 256 is divisible by 32, so masking a random byte to 5 bits stays uniform. */
 export function generatePublicId(kind: PublicIdKind): string {
   const bytes = crypto.getRandomValues(new Uint8Array(PUBLIC_ID_TOKEN_LENGTH));
-  let token = '';
+  let token = "";
   for (const b of bytes) token += PUBLIC_ID_ALPHABET[b & 0x1f];
   return `${PUBLIC_ID_PREFIXES[kind]}_${token}`;
 }
@@ -50,7 +50,7 @@ export function generatePublicId(kind: PublicIdKind): string {
  * expected.
  */
 export function parsePublicId(value: unknown, kind: PublicIdKind): string | null {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase();
   const prefix = `${PUBLIC_ID_PREFIXES[kind]}_`;
   if (!normalized.startsWith(prefix)) return null;
@@ -74,13 +74,16 @@ const LEGACY_HEX32_RE = /^[0-9a-f]{32}$/;
 const LEGACY_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export function isLegacyPublicId(value: unknown): value is string {
-  if (typeof value !== 'string') return false;
+  if (typeof value !== "string") return false;
   const v = value.trim().toLowerCase();
   return LEGACY_HEX32_RE.test(v) || LEGACY_UUID_RE.test(v);
 }
 
 /** Accepts the new prefixed form or a preserved legacy shape (orders/refunds). */
-export function parseOrderOrLegacyPublicId(value: unknown, kind: 'order' | 'refund'): string | null {
+export function parseOrderOrLegacyPublicId(
+  value: unknown,
+  kind: "order" | "refund",
+): string | null {
   const prefixed = parsePublicId(value, kind);
   if (prefixed) return prefixed;
   if (isLegacyPublicId(value)) return (value as string).trim().toLowerCase();
@@ -111,7 +114,11 @@ export function truncatePublicId(value: string, kind: PublicIdKind): string {
 
 /** True when an insert failed on a public_id unique index (retry with a fresh ID). */
 export function isPublicIdConflict(err: unknown): boolean {
-  return err instanceof Error && /UNIQUE/i.test(err.message) && /public_id|access_token/i.test(err.message);
+  return (
+    err instanceof Error &&
+    /UNIQUE/i.test(err.message) &&
+    /public_id|access_token/i.test(err.message)
+  );
 }
 
 /**

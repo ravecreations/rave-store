@@ -36,35 +36,35 @@
     {
       "name": "AUTH_RATE_LIMITER",
       "namespace_id": "10001",
-      "simple": { "limit": 10, "period": 60 }
+      "simple": { "limit": 10, "period": 60 },
     },
     {
       "name": "CHECKOUT_RATE_LIMITER",
       "namespace_id": "10002",
-      "simple": { "limit": 20, "period": 60 }
+      "simple": { "limit": 20, "period": 60 },
     },
     {
       "name": "SEARCH_RATE_LIMITER",
       "namespace_id": "10003",
-      "simple": { "limit": 60, "period": 60 }
-    }
+      "simple": { "limit": 60, "period": 60 },
+    },
   ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "__DB_NAME__",
       "database_id": "__DB_ID__",
-      "migrations_dir": "migrations"
-    }
+      "migrations_dir": "migrations",
+    },
   ],
   "r2_buckets": [
     { "binding": "BUCKET", "bucket_name": "__BUCKET__" },
     // Private deliverables: never enable r2.dev or attach a custom domain.
-    { "binding": "FILES", "bucket_name": "__FILES_BUCKET__" }
+    { "binding": "FILES", "bucket_name": "__FILES_BUCKET__" },
   ],
   "vars": {
     "STORE_NAME": "My Shop",
-    "TIME_ZONE": "UTC"
+    "TIME_ZONE": "UTC",
     // Serve product images from an R2 custom domain (bypasses the Worker /images
     // route and unlocks on-demand delivery in Admin); connect a public custom
     // domain to the bucket first. See README.
@@ -75,5 +75,5 @@
     // nothing is advertised, rather than pointing at an endpoint that is not
     // there. See README → MCP server.
     // "MCP_URL": "https://your-mcp-host/mcp"
-  }
+  },
 }

@@ -1,9 +1,9 @@
-import type { Product } from '../products/db';
-import { productImageSources, type ImageDelivery } from '../products/image';
-import { requirePublicId } from '../catalog/serialize';
-import { stockState } from '../products/stock';
-import { formatMoney } from '../../money';
-import type { ProductCardModel, StorefrontImage } from './models';
+import type { Product } from "../products/db";
+import { productImageSources, type ImageDelivery } from "../products/image";
+import { requirePublicId } from "../catalog/serialize";
+import { stockState } from "../products/stock";
+import { formatMoney } from "../../money";
+import type { ProductCardModel, StorefrontImage } from "./models";
 
 /**
  * Builders that turn authoritative product data into the presentation models
@@ -42,7 +42,7 @@ export function buildStorefrontImage(
   const sources = productImageSources(imageKey, {
     baseUrl: options.baseUrl,
     delivery: options.delivery,
-    usage: priority ? 'detail' : 'card',
+    usage: priority ? "detail" : "card",
     sizes: options.sizes,
   });
 
@@ -70,12 +70,9 @@ export interface ProductCardOptions extends StorefrontImageOptions {
  * catalog serializers: that is a deploy-order bug, and failing loudly beats
  * rendering a numeric row ID into a public page.
  */
-export function buildProductCard(
-  product: Product,
-  options: ProductCardOptions,
-): ProductCardModel {
+export function buildProductCard(product: Product, options: ProductCardOptions): ProductCardModel {
   return {
-    id: requirePublicId(product.public_id, product.id, 'product'),
+    id: requirePublicId(product.public_id, product.id, "product"),
     name: product.name,
     href: `/products/${product.slug}`,
     image: buildStorefrontImage(product.image_key, product.name, options),
@@ -84,6 +81,6 @@ export function buildProductCard(
     formattedPrice: formatMoney(product.price_cents, options.currency),
     // Availability only — never the count. `stockState` is the authoritative
     // classification; re-deriving `stock > 0` here would fork that rule.
-    inStock: stockState(product.stock) !== 'out',
+    inStock: stockState(product.stock) !== "out",
   };
 }

@@ -24,9 +24,9 @@
  * sibling theme). Derivation keeps the check honest for a generated store's
  * merchant-owned theme, which upstream cannot know a sentinel for.
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
-import { THEMES_DIR, discoverThemeIds, resolveTheme } from './themes.mjs';
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
+import { THEMES_DIR, discoverThemeIds, resolveTheme } from "./themes.mjs";
 
 const root = process.cwd();
 
@@ -40,10 +40,10 @@ const PLAIN_CLASS = /^[a-z][a-zA-Z0-9:/\[\]().,%_'-]*$/;
 
 function classesIn(file) {
   const out = new Set();
-  const source = readFileSync(file, 'utf8');
+  const source = readFileSync(file, "utf8");
   for (const match of source.matchAll(CLASS_ATTR)) {
-    for (const token of (match[1] ?? match[2] ?? '').split(/\s+/)) {
-      if (token && PLAIN_CLASS.test(token) && !token.includes('$')) out.add(token);
+    for (const token of (match[1] ?? match[2] ?? "").split(/\s+/)) {
+      if (token && PLAIN_CLASS.test(token) && !token.includes("$")) out.add(token);
     }
   }
   return out;
@@ -72,7 +72,7 @@ function classesUnder(dir) {
  *  contain it in every build and the check cries wolf. */
 function rawContentUnder(dir, { skipDirs = [] } = {}) {
   const skips = skipDirs.map((d) => resolve(d));
-  let out = '';
+  let out = "";
   const walk = (d) => {
     for (const entry of readdirSync(d, { withFileTypes: true })) {
       const path = join(d, entry.name);
@@ -81,8 +81,8 @@ function rawContentUnder(dir, { skipDirs = [] } = {}) {
         walk(path);
         continue;
       }
-      out += readFileSync(path, 'utf8');
-      out += '\n';
+      out += readFileSync(path, "utf8");
+      out += "\n";
     }
   };
   if (existsSync(dir)) walk(dir);
@@ -104,7 +104,7 @@ const themeClasses = new Map(ids.map((id) => [id, classesUnder(resolve(root, THE
 const srcExceptTheme = new Map(
   ids.map((id) => [
     id,
-    rawContentUnder(resolve(root, 'src'), { skipDirs: [resolve(root, THEMES_DIR, id)] }),
+    rawContentUnder(resolve(root, "src"), { skipDirs: [resolve(root, THEMES_DIR, id)] }),
   ]),
 );
 
@@ -116,9 +116,9 @@ function uniqueTo(id) {
 // ---------------------------------------------------------------------------
 // Read the built stylesheets.
 
-const distDir = resolve(root, 'dist');
+const distDir = resolve(root, "dist");
 if (!existsSync(distDir)) {
-  console.error('check-built-css: no dist/. Run `astro build` first.');
+  console.error("check-built-css: no dist/. Run `astro build` first.");
   process.exit(1);
 }
 const cssFiles = [];
@@ -126,15 +126,15 @@ const findCss = (d) => {
   for (const entry of readdirSync(d, { withFileTypes: true })) {
     const path = join(d, entry.name);
     if (entry.isDirectory()) findCss(path);
-    else if (entry.name.endsWith('.css')) cssFiles.push(path);
+    else if (entry.name.endsWith(".css")) cssFiles.push(path);
   }
 };
 findCss(distDir);
 if (cssFiles.length === 0) {
-  console.error('check-built-css: dist/ contains no stylesheets.');
+  console.error("check-built-css: dist/ contains no stylesheets.");
   process.exit(1);
 }
-const css = new Map(cssFiles.map((f) => [f, readFileSync(f, 'utf8')]));
+const css = new Map(cssFiles.map((f) => [f, readFileSync(f, "utf8")]));
 
 const failures = [];
 
@@ -145,29 +145,33 @@ const failures = [];
 //    assertions. The markers are emitted by the entries themselves
 //    (src/styles/global.css and admin.css).
 const entryOf = (body) => {
-  const admin = body.includes('--minshop-css-entry:admin');
-  const storefront = body.includes('--minshop-css-entry:storefront');
-  if (admin && storefront) return 'both';
-  if (admin) return 'admin';
-  if (storefront) return 'storefront';
-  return 'unmarked'; // e.g. a component-scoped chunk
+  const admin = body.includes("--minshop-css-entry:admin");
+  const storefront = body.includes("--minshop-css-entry:storefront");
+  if (admin && storefront) return "both";
+  if (admin) return "admin";
+  if (storefront) return "storefront";
+  return "unmarked"; // e.g. a component-scoped chunk
 };
 const adminFiles = [];
 const storefrontFiles = [];
 for (const f of cssFiles) {
   const entry = entryOf(css.get(f));
-  if (entry === 'both') {
+  if (entry === "both") {
     failures.push(
       `${relative(root, f)}: carries BOTH entry markers — the Admin and storefront entries were merged into one stylesheet, so Admin cannot be isolated.`,
     );
-  } else if (entry === 'admin') adminFiles.push(f);
-  else if (entry === 'storefront') storefrontFiles.push(f);
+  } else if (entry === "admin") adminFiles.push(f);
+  else if (entry === "storefront") storefrontFiles.push(f);
 }
 if (adminFiles.length === 0) {
-  failures.push('no built stylesheet carries the Admin entry marker — admin.css lost it, or the entry was dropped.');
+  failures.push(
+    "no built stylesheet carries the Admin entry marker — admin.css lost it, or the entry was dropped.",
+  );
 }
 if (storefrontFiles.length === 0) {
-  failures.push('no built stylesheet carries the storefront entry marker — global.css lost it, or the entry was dropped.');
+  failures.push(
+    "no built stylesheet carries the storefront entry marker — global.css lost it, or the entry was dropped.",
+  );
 }
 
 // 1a. The active theme is actually in the storefront output.
@@ -216,11 +220,11 @@ for (const c of activeCandidates) {
 
 // 2. Admin palette: every Admin-marked stylesheet must keep Admin's own paper
 //    and reject the active theme's.
-const adminSource = readFileSync(resolve(root, 'src/styles/admin.css'), 'utf8');
+const adminSource = readFileSync(resolve(root, "src/styles/admin.css"), "utf8");
 const adminPaper = adminSource.match(/--color-paper:\s*([^;]+);/)?.[1].trim();
-const activeTheme = readFileSync(resolve(root, THEMES_DIR, active.id, 'tokens.css'), 'utf8');
+const activeTheme = readFileSync(resolve(root, THEMES_DIR, active.id, "tokens.css"), "utf8");
 const activePaper = activeTheme.match(/--color-paper:\s*([^;]+);/)?.[1].trim();
-if (!adminPaper) failures.push('src/styles/admin.css declares no --color-paper.');
+if (!adminPaper) failures.push("src/styles/admin.css declares no --color-paper.");
 for (const f of adminFiles) {
   const body = css.get(f);
   if (adminPaper && !body.includes(`--color-paper:${adminPaper}`)) {
@@ -239,6 +243,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(
-  `check-built-css: ok — active "${active.id}" present (${activeHits.length} sentinel${activeHits.length === 1 ? '' : 's'}), ` +
-    `${ids.length - 1} inactive theme${ids.length === 2 ? '' : 's'} excluded, Admin isolated, across ${cssFiles.length} stylesheet${cssFiles.length === 1 ? '' : 's'}.`,
+  `check-built-css: ok — active "${active.id}" present (${activeHits.length} sentinel${activeHits.length === 1 ? "" : "s"}), ` +
+    `${ids.length - 1} inactive theme${ids.length === 2 ? "" : "s"} excluded, Admin isolated, across ${cssFiles.length} stylesheet${cssFiles.length === 1 ? "" : "s"}.`,
 );

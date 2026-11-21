@@ -1,6 +1,6 @@
-import MarkdownIt from 'markdown-it';
-import type { MarkdownIt as MarkdownItInstance, Token } from 'markdown-it';
-import { mediaUrl } from '../media/url.ts';
+import MarkdownIt from "markdown-it";
+import type { MarkdownIt as MarkdownItInstance, Token } from "markdown-it";
+import { mediaUrl } from "../media/url.ts";
 
 /**
  * Server-only Markdown renderer, shared by the storefront route and the admin
@@ -23,7 +23,7 @@ const md = new MarkdownIt({
 });
 
 /** Root-relative media reference the editor inserts: /images/<key>. */
-const LOCAL_IMAGE_PREFIX = '/images/';
+const LOCAL_IMAGE_PREFIX = "/images/";
 
 function localKeyFromSrc(src: string, baseUrl: string): string | null {
   if (src.startsWith(LOCAL_IMAGE_PREFIX)) {
@@ -49,12 +49,12 @@ function localKeyFromSrc(src: string, baseUrl: string): string | null {
 function inlineTextOf(tokens: Token[]): string {
   return tokens
     .map((token) => {
-      if (token.type === 'text' || token.type === 'text_special') return token.content;
-      if (token.type === 'code_inline') return token.content;
+      if (token.type === "text" || token.type === "text_special") return token.content;
+      if (token.type === "code_inline") return token.content;
       if (token.children?.length) return inlineTextOf(token.children);
-      return '';
+      return "";
     })
-    .join('');
+    .join("");
 }
 
 export interface RenderOptions {
@@ -87,28 +87,28 @@ export interface RenderOptions {
 function installImageRule(
   instance: MarkdownItInstance,
   baseUrl: string,
-  dimensions?: RenderOptions['dimensions'],
+  dimensions?: RenderOptions["dimensions"],
 ): void {
   instance.renderer.rules.image = (tokens, idx, options, _env, self) => {
     const token = tokens[idx];
     // attrGet is typed string | number since markdown-it 15; src is always a string.
-    const src = String(token.attrGet('src') ?? '');
+    const src = String(token.attrGet("src") ?? "");
     const key = localKeyFromSrc(src, baseUrl);
-    if (key) token.attrSet('src', mediaUrl(key, baseUrl));
+    if (key) token.attrSet("src", mediaUrl(key, baseUrl));
     // markdown-it's DEFAULT image rule fills `alt` from the token's inline
     // children; overriding the rule means doing it here too. Without this every
     // image renders alt="" — the alt text an author typed is silently dropped.
-    token.attrSet('alt', inlineTextOf(token.children ?? []));
+    token.attrSet("alt", inlineTextOf(token.children ?? []));
     // Body images are below the fold by definition — the header logo is the
     // only image on the page that must not be lazy.
-    token.attrSet('loading', 'lazy');
-    token.attrSet('decoding', 'async');
+    token.attrSet("loading", "lazy");
+    token.attrSet("decoding", "async");
     const size = key ? dimensions?.get(key) : undefined;
     if (size) {
       // Intrinsic size only. The CSS keeps `max-width: 100%; height: auto`, so
       // these reserve the right aspect ratio without pinning the rendered size.
-      token.attrSet('width', String(size.width));
-      token.attrSet('height', String(size.height));
+      token.attrSet("width", String(size.width));
+      token.attrSet("height", String(size.height));
     }
     // renderToken escapes attribute values, and alt text goes through the
     // default renderer, so neither can break out into markup.
@@ -117,7 +117,7 @@ function installImageRule(
 }
 
 export function renderMarkdown(markdown: string, options: RenderOptions = {}): string {
-  const baseUrl = options.baseUrl ?? '';
+  const baseUrl = options.baseUrl ?? "";
   const instance = new MarkdownIt({
     html: false,
     linkify: true,
@@ -134,11 +134,11 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): s
     instance.renderer.renderToken = (tokens, idx, opts) => {
       const token = tokens[idx];
       if (token.map && token.nesting !== -1) {
-        token.attrSet('data-source-line', String(token.map[0] + 1));
+        token.attrSet("data-source-line", String(token.map[0] + 1));
         // Exclusive end line, so the editor knows the block's source extent and
         // can map a click INSIDE the text to a character offset rather than
         // selecting the whole line.
-        token.attrSet('data-source-end', String(token.map[1] + 1));
+        token.attrSet("data-source-end", String(token.map[1] + 1));
       }
       return renderToken(tokens, idx, opts);
     };
@@ -155,20 +155,20 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): s
 export function markdownExcerpt(markdown: string, maxLength = 160): string {
   const text = md
     .parse(markdown, {})
-    .filter((token) => token.type === 'inline')
+    .filter((token) => token.type === "inline")
     .map((token) =>
       (token.children ?? [])
-        .filter((child) => child.type === 'text' || child.type === 'code_inline')
+        .filter((child) => child.type === "text" || child.type === "code_inline")
         .map((child) => child.content)
-        .join(''),
+        .join(""),
     )
-    .join(' ')
-    .replace(/\s+/g, ' ')
+    .join(" ")
+    .replace(/\s+/g, " ")
     .trim();
   if (text.length <= maxLength) return text;
   // Cut on a word boundary so the summary doesn't end mid-word.
   const cut = text.slice(0, maxLength - 1);
-  const lastSpace = cut.lastIndexOf(' ');
+  const lastSpace = cut.lastIndexOf(" ");
   return `${(lastSpace > maxLength / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
@@ -181,12 +181,12 @@ export function markdownExcerpt(markdown: string, maxLength = 160): string {
  * be library associations.
  */
 export function extractMediaKeys(markdown: string, options: RenderOptions = {}): string[] {
-  const baseUrl = options.baseUrl ?? '';
+  const baseUrl = options.baseUrl ?? "";
   const keys = new Set<string>();
   const walk = (tokens: ReturnType<typeof md.parse>) => {
     for (const token of tokens) {
-      if (token.type === 'image') {
-        const key = localKeyFromSrc(String(token.attrGet('src') ?? ''), baseUrl);
+      if (token.type === "image") {
+        const key = localKeyFromSrc(String(token.attrGet("src") ?? ""), baseUrl);
         if (key) keys.add(key);
       }
       if (token.children?.length) walk(token.children);

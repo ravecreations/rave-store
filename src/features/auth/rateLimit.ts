@@ -1,6 +1,6 @@
-import type { RateLimit } from '@cloudflare/workers-types';
+import type { RateLimit } from "@cloudflare/workers-types";
 
-export type RateLimitBucket = 'auth' | 'checkout' | 'search';
+export type RateLimitBucket = "auth" | "checkout" | "search";
 
 /** Public routes that can spend scarce resources or amplify credential abuse. */
 export function rateLimitBucket(
@@ -9,21 +9,22 @@ export function rateLimitBucket(
   hasSearchQuery = false,
 ): RateLimitBucket | null {
   if (
-    method === 'GET' &&
+    method === "GET" &&
     hasSearchQuery &&
-    (pathname === '/search' || pathname === '/api/products')
+    (pathname === "/search" || pathname === "/api/products")
   ) {
-    return 'search';
+    return "search";
   }
-  if (method !== 'POST') return null;
+  if (method !== "POST") return null;
   if (
-    pathname === '/admin/login' ||
-    pathname === '/admin/v1/auth/magic-link' ||
-    pathname === '/account/login' ||
-    pathname === '/account/verify'
-  ) return 'auth';
-  if (pathname === '/api/checkout' || pathname === '/checkout' || pathname.startsWith('/pay/')) {
-    return 'checkout';
+    pathname === "/admin/login" ||
+    pathname === "/admin/v1/auth/magic-link" ||
+    pathname === "/account/login" ||
+    pathname === "/account/verify"
+  )
+    return "auth";
+  if (pathname === "/api/checkout" || pathname === "/checkout" || pathname.startsWith("/pay/")) {
+    return "checkout";
   }
   return null;
 }
@@ -35,8 +36,8 @@ export function rateLimitBucket(
  * coupling separately provisioned stores in one Cloudflare account.
  */
 export function anonymousRateLimitKey(request: Request, pathname: string): string {
-  const client = request.headers.get('cf-connecting-ip')?.trim() || 'unknown-client';
-  const route = pathname === '/admin/v1/auth/magic-link' ? '/admin/login' : pathname;
+  const client = request.headers.get("cf-connecting-ip")?.trim() || "unknown-client";
+  const route = pathname === "/admin/v1/auth/magic-link" ? "/admin/login" : pathname;
   return `${new URL(request.url).hostname}:${route}:${client}`;
 }
 
@@ -54,19 +55,19 @@ export async function checkRateLimit(
 }
 
 export function rateLimitedResponse(pathname: string): Response {
-  const api = pathname.startsWith('/api/');
+  const api = pathname.startsWith("/api/");
   return new Response(
     api
-      ? JSON.stringify({ error: 'Too many requests. Try again shortly.' })
-      : 'Too many requests. Try again shortly.',
+      ? JSON.stringify({ error: "Too many requests. Try again shortly." })
+      : "Too many requests. Try again shortly.",
     {
       status: 429,
       headers: {
-        'cache-control': 'no-store',
-        'content-type': api ? 'application/json; charset=utf-8' : 'text/plain; charset=utf-8',
-        'retry-after': '60',
-        ...(pathname === '/api/checkout' || pathname === '/api/products'
-          ? { 'access-control-allow-origin': '*' }
+        "cache-control": "no-store",
+        "content-type": api ? "application/json; charset=utf-8" : "text/plain; charset=utf-8",
+        "retry-after": "60",
+        ...(pathname === "/api/checkout" || pathname === "/api/products"
+          ? { "access-control-allow-origin": "*" }
           : {}),
       },
     },

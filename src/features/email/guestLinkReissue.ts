@@ -1,8 +1,8 @@
-import { getConfig } from '../../config';
-import type { Order } from '../orders/db';
-import { orderReference } from '../orders/number';
-import type { EmailMessage } from './provider';
-import { PALETTE, emailShell, emailButton, escapeHtml } from './layout';
+import { getConfig } from "../../config";
+import type { Order } from "../orders/db";
+import { orderReference } from "../orders/number";
+import type { EmailMessage } from "./provider";
+import { PALETTE, emailShell, emailButton, escapeHtml } from "./layout";
 
 /**
  * Build the guest-link reissue email. Sent when support rotates an order's
@@ -27,16 +27,16 @@ export function guestLinkReissueEmail(
     ``,
     `If you didn't ask for a new link, you can ignore this email; the new link`,
     `still shows your order as usual.`,
-  ].join('\n');
+  ].join("\n");
 
   const html = emailShell({
     storeName,
-    heading: 'Your new order link',
+    heading: "Your new order link",
     subheading: `A fresh link for order #${escapeHtml(num)}.`,
     body:
       `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${PALETTE.muted};">` +
       `Any links from earlier emails no longer work — use this one from now on.</p>` +
-      emailButton(guestOrderUrl, 'View your order'),
+      emailButton(guestOrderUrl, "View your order"),
     footer: `If you didn't ask for a new link, you can ignore this email.`,
   });
 

@@ -26,31 +26,31 @@ export function normalizeHtml(html) {
   return (
     html
       .replace(PUBLIC_ID, (_match, prefix) => `${prefix}_<id>`)
-      .replace(ASSET_HASH, '/_astro/$1.<hash>.$2')
-      .replace(ASTRO_CID, 'data-astro-cid-<hash>')
+      .replace(ASSET_HASH, "/_astro/$1.<hash>.$2")
+      .replace(ASTRO_CID, "data-astro-cid-<hash>")
       // One tag per line. The build minifies the document onto a single line,
       // which would report every difference as "line 7 changed" against 40KB of
       // context. Applied to baseline and current alike, so it only affects how a
       // failure reads, never whether one is detected.
-      .replace(/></g, '>\n<')
+      .replace(/></g, ">\n<")
       // Trailing whitespace only: internal indentation is structural evidence.
-      .split('\n')
-      .map((line) => line.replace(/\s+$/, ''))
-      .join('\n')
-      .trim() + '\n'
+      .split("\n")
+      .map((line) => line.replace(/\s+$/, ""))
+      .join("\n")
+      .trim() + "\n"
   );
 }
 
 /** Response headers worth pinning. Cache-control and cache tags are part of the
  *  contract an extraction must not move or drop. */
 const PINNED_HEADERS = [
-  'content-type',
-  'cache-control',
-  'cache-tag',
-  'vary',
+  "content-type",
+  "cache-control",
+  "cache-tag",
+  "vary",
   // A redirect's target is route behavior an extraction must preserve, and
   // several shell consumers legitimately baseline as a redirect.
-  'location',
+  "location",
 ];
 
 export function normalizeHeaders(headers) {
@@ -58,5 +58,5 @@ export function normalizeHeaders(headers) {
     const value = headers.get(name);
     if (value == null) return [];
     return [`${name}: ${value.replace(PUBLIC_ID, (_m, prefix) => `${prefix}_<id>`)}`];
-  }).join('\n');
+  }).join("\n");
 }

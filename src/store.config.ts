@@ -1,4 +1,4 @@
-import type { DeepPartial, SiteConfig } from './config';
+import type { DeepPartial, SiteConfig } from "./config";
 
 /**
  * RAVE Creations store settings — list ONLY what differs from the defaults in
@@ -10,20 +10,20 @@ import type { DeepPartial, SiteConfig } from './config';
  * Operational switches and integrations belong in Admin → Settings.
  */
 export const storeOverrides: DeepPartial<SiteConfig> = {
-  storeName: 'RAVE Creations',
-  timeZone: 'America/Phoenix',
-  currency: 'usd',
+  storeName: "RAVE Creations",
+  timeZone: "America/Phoenix",
+  currency: "usd",
   shipping: {
     enabled: true,
     zones: [
       {
-        name: 'United States',
-        countries: ['US'],
+        name: "United States",
+        countries: ["US"],
         rates: [
-          { label: 'Standard shipping', amountCents: 500 },
+          { label: "Standard shipping", amountCents: 500 },
           {
-            label: 'Local pickup — Phoenix, AZ',
-            pricing: { type: 'pickup', amountCents: 0 },
+            label: "Local pickup — Phoenix, AZ",
+            pricing: { type: "pickup", amountCents: 0 },
           },
         ],
         // Free shipping once the subtotal reaches $50.

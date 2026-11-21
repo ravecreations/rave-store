@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { readImageDimensions } from './dimensions';
+import { describe, it, expect } from "vitest";
+import { readImageDimensions } from "./dimensions";
 
 /** Minimal but real headers — the same bytes the decoders see in production. */
 const png = (w: number, h: number) => {
@@ -53,16 +53,16 @@ const webpVP8 = (w: number, h: number) => {
   return b;
 };
 
-describe('readImageDimensions', () => {
-  it('reads PNG from the IHDR chunk', () => {
+describe("readImageDimensions", () => {
+  it("reads PNG from the IHDR chunk", () => {
     expect(readImageDimensions(png(1200, 630))).toEqual({ width: 1200, height: 630 });
   });
 
-  it('reads GIF from the logical screen descriptor (little-endian)', () => {
+  it("reads GIF from the logical screen descriptor (little-endian)", () => {
     expect(readImageDimensions(gif(300, 200))).toEqual({ width: 300, height: 200 });
   });
 
-  it('reads JPEG from the frame header, skipping earlier segments', () => {
+  it("reads JPEG from the frame header, skipping earlier segments", () => {
     expect(readImageDimensions(jpeg(242, 209))).toEqual({ width: 242, height: 209 });
     expect(readImageDimensions(jpeg(242, 209, { withPreamble: false }))).toEqual({
       width: 242,
@@ -70,14 +70,14 @@ describe('readImageDimensions', () => {
     });
   });
 
-  it('reads both WebP layouts', () => {
+  it("reads both WebP layouts", () => {
     expect(readImageDimensions(webpVP8X(1920, 1080))).toEqual({ width: 1920, height: 1080 });
     expect(readImageDimensions(webpVP8(640, 480))).toEqual({ width: 640, height: 480 });
   });
 
   // A missing dimension costs a layout shift; a thrown error costs the upload.
   // Everything unparseable must degrade to null.
-  it('returns null rather than throwing on junk, truncation, or empty input', () => {
+  it("returns null rather than throwing on junk, truncation, or empty input", () => {
     expect(readImageDimensions(new Uint8Array(0))).toBeNull();
     expect(readImageDimensions(new Uint8Array([1, 2, 3, 4, 5]))).toBeNull();
     expect(readImageDimensions(png(10, 10).slice(0, 12))).toBeNull();
@@ -90,7 +90,7 @@ describe('readImageDimensions', () => {
     expect(readImageDimensions(wav)).toBeNull();
   });
 
-  it('rejects zero and out-of-range values instead of storing nonsense', () => {
+  it("rejects zero and out-of-range values instead of storing nonsense", () => {
     expect(readImageDimensions(png(0, 100))).toBeNull();
     expect(readImageDimensions(gif(0, 0))).toBeNull();
     expect(readImageDimensions(png(70000, 10))).toBeNull();

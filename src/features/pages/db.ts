@@ -1,5 +1,5 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import { withPublicId } from '../ids/publicId.ts';
+import type { D1Database } from "@cloudflare/workers-types";
+import { withPublicId } from "../ids/publicId.ts";
 
 export interface Page {
   id: number;
@@ -33,20 +33,17 @@ export const PUBLISHED_PAGE_LINKS_SQL = `SELECT title, slug FROM pages
    LIMIT ${MAX_FOOTER_PAGE_LINKS}`;
 
 export async function getPage(db: D1Database, id: number): Promise<Page | null> {
-  return db.prepare('SELECT * FROM pages WHERE id = ?').bind(id).first<Page>();
+  return db.prepare("SELECT * FROM pages WHERE id = ?").bind(id).first<Page>();
 }
 
 /** Page by its prefixed public ID (boundary resolution; null if missing). */
 export async function getPageByPublicId(db: D1Database, publicId: string): Promise<Page | null> {
-  return db.prepare('SELECT * FROM pages WHERE public_id = ?').bind(publicId).first<Page>();
+  return db.prepare("SELECT * FROM pages WHERE public_id = ?").bind(publicId).first<Page>();
 }
 
-export async function getPublishedPageBySlug(
-  db: D1Database,
-  slug: string,
-): Promise<Page | null> {
+export async function getPublishedPageBySlug(db: D1Database, slug: string): Promise<Page | null> {
   return db
-    .prepare('SELECT * FROM pages WHERE slug = ? AND published = 1')
+    .prepare("SELECT * FROM pages WHERE slug = ? AND published = 1")
     .bind(slug)
     .first<Page>();
 }
@@ -54,7 +51,7 @@ export async function getPublishedPageBySlug(
 /** Admin listing: drafts included, newest activity first. */
 export async function listPages(db: D1Database): Promise<Page[]> {
   const { results } = await db
-    .prepare('SELECT * FROM pages ORDER BY updated_at DESC, id DESC')
+    .prepare("SELECT * FROM pages ORDER BY updated_at DESC, id DESC")
     .all<Page>();
   return results ?? [];
 }
@@ -67,7 +64,7 @@ export async function listPublishedPageLinks(db: D1Database): Promise<PageLink[]
 /** Every published page, for the sitemap and llms.txt (no footer cap). */
 export async function listPublishedPages(db: D1Database): Promise<PageLink[]> {
   const { results } = await db
-    .prepare('SELECT title, slug FROM pages WHERE published = 1 ORDER BY title COLLATE NOCASE, id')
+    .prepare("SELECT title, slug FROM pages WHERE published = 1 ORDER BY title COLLATE NOCASE, id")
     .all<PageLink>();
   return results ?? [];
 }
@@ -81,24 +78,22 @@ export async function listPublishedPageOptions(
 ): Promise<Array<{ id: number; public_id: string | null; title: string }>> {
   const { results } = await db
     .prepare(
-      'SELECT id, public_id, title FROM pages WHERE published = 1 ORDER BY title COLLATE NOCASE, id',
+      "SELECT id, public_id, title FROM pages WHERE published = 1 ORDER BY title COLLATE NOCASE, id",
     )
     .all<{ id: number; public_id: string | null; title: string }>();
   return results ?? [];
 }
 
 /** New pages start unpublished: media can only be attached once an id exists. */
-export async function createDraft(
-  db: D1Database,
-  title: string,
-  slug: string,
-): Promise<number> {
-  return withPublicId('page', async (publicId) => {
+export async function createDraft(db: D1Database, title: string, slug: string): Promise<number> {
+  return withPublicId("page", async (publicId) => {
     const row = await db
-      .prepare('INSERT INTO pages (title, slug, published, public_id) VALUES (?, ?, 0, ?) RETURNING id')
+      .prepare(
+        "INSERT INTO pages (title, slug, published, public_id) VALUES (?, ?, 0, ?) RETURNING id",
+      )
       .bind(title, slug, publicId)
       .first<{ id: number }>();
-    if (!row) throw new Error('page insert returned no row');
+    if (!row) throw new Error("page insert returned no row");
     return row.id;
   });
 }
@@ -123,14 +118,7 @@ export async function updatePage(
               updated_at = datetime('now')
         WHERE id = ?`,
     )
-    .bind(
-      fields.title,
-      fields.slug,
-      fields.body_markdown,
-      fields.published,
-      fields.layout,
-      id,
-    )
+    .bind(fields.title, fields.slug, fields.body_markdown, fields.published, fields.layout, id)
     .run();
 }
 
@@ -140,7 +128,7 @@ export async function updatePage(
  */
 export async function deletePage(db: D1Database, id: number): Promise<void> {
   await db.batch([
-    db.prepare('DELETE FROM page_media WHERE page_id = ?').bind(id),
-    db.prepare('DELETE FROM pages WHERE id = ?').bind(id),
+    db.prepare("DELETE FROM page_media WHERE page_id = ?").bind(id),
+    db.prepare("DELETE FROM pages WHERE id = ?").bind(id),
   ]);
 }

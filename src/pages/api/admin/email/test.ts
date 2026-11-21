@@ -1,7 +1,7 @@
-import type { APIRoute } from 'astro';
-import { getEmailProvider } from '../../../../features/email';
-import { getStoreSettings } from '../../../../features/settings/db';
-import { env } from 'cloudflare:workers';
+import type { APIRoute } from "astro";
+import { getEmailProvider } from "../../../../features/email";
+import { getStoreSettings } from "../../../../features/settings/db";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
@@ -11,24 +11,24 @@ export const prerender = false;
 // dashboard's inline button; falls back to a ?msg redirect without JS.
 export const POST: APIRoute = async ({ request, redirect }) => {
   const form = await request.formData();
-  const to = String(form.get('test_to') ?? '').trim();
-  const wantsJson = request.headers.get('x-requested-with') === 'fetch';
+  const to = String(form.get("test_to") ?? "").trim();
+  const wantsJson = request.headers.get("x-requested-with") === "fetch";
   const done = (ok: boolean, message: string) =>
     wantsJson
       ? new Response(JSON.stringify({ ok, message }), {
           status: 200,
-          headers: { 'content-type': 'application/json; charset=utf-8' },
+          headers: { "content-type": "application/json; charset=utf-8" },
         })
       : redirect(`/admin/settings?msg=${encodeURIComponent(message)}#email`, 303);
 
   if (!to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
-    return done(false, 'Enter a valid recipient address for the test email.');
+    return done(false, "Enter a valid recipient address for the test email.");
   }
   const provider = await getEmailProvider();
   if (!provider) {
-    return done(false, 'Email isn’t configured — pick a provider, add its key, and Save first.');
+    return done(false, "Email isn’t configured — pick a provider, add its key, and Save first.");
   }
-  const storeName = (await getStoreSettings(env.DB)).storeName ?? 'your store';
+  const storeName = (await getStoreSettings(env.DB)).storeName ?? "your store";
   try {
     await provider.send({
       to,
@@ -38,6 +38,6 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     });
     return done(true, `Test email sent to ${to}.`);
   } catch (err) {
-    return done(false, `Send failed: ${(err as Error).message || 'unknown error'}`);
+    return done(false, `Send failed: ${(err as Error).message || "unknown error"}`);
   }
 };

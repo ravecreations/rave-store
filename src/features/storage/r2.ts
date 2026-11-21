@@ -1,5 +1,5 @@
-import type { R2Bucket } from '@cloudflare/workers-types';
-import type { StorageProvider, StoredObject } from './provider';
+import type { R2Bucket } from "@cloudflare/workers-types";
+import type { StorageProvider, StoredObject } from "./provider";
 
 /** Cloudflare R2 adapter for the StorageProvider port. */
 export function createR2Storage(bucket: R2Bucket): StorageProvider {
@@ -12,7 +12,7 @@ export function createR2Storage(bucket: R2Bucket): StorageProvider {
       await bucket.put(key, data, {
         httpMetadata: {
           contentType,
-          cacheControl: options?.cacheControl ?? 'public, max-age=31536000, immutable',
+          cacheControl: options?.cacheControl ?? "public, max-age=31536000, immutable",
         },
       });
     },
@@ -22,7 +22,7 @@ export function createR2Storage(bucket: R2Bucket): StorageProvider {
       if (!obj) return null;
       return {
         body: obj.body as unknown as ReadableStream,
-        contentType: obj.httpMetadata?.contentType ?? 'application/octet-stream',
+        contentType: obj.httpMetadata?.contentType ?? "application/octet-stream",
       };
     },
 

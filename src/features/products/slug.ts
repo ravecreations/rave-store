@@ -1,18 +1,18 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database } from "@cloudflare/workers-types";
 
 const DIACRITICS = /[̀-ͯ]/g;
 
 /** Turn arbitrary text into a URL-safe slug. */
 export function slugify(input: string): string {
   const base = input
-    .normalize('NFKD')
-    .replace(DIACRITICS, '')
+    .normalize("NFKD")
+    .replace(DIACRITICS, "")
     .toLowerCase()
-    .replace(/['’`]/g, '') // drop apostrophes so "mom's" → "moms", not "mom-s"
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/['’`]/g, "") // drop apostrophes so "mom's" → "moms", not "mom-s"
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 80);
-  return base || 'product';
+  return base || "product";
 }
 
 /**
@@ -29,9 +29,7 @@ export async function uniqueSlug(
   let n = 1;
   while (true) {
     const row = await db
-      .prepare(
-        `SELECT id FROM products WHERE slug = ?${excludeId ? ' AND id != ?' : ''} LIMIT 1`,
-      )
+      .prepare(`SELECT id FROM products WHERE slug = ?${excludeId ? " AND id != ?" : ""} LIMIT 1`)
       .bind(...(excludeId ? [candidate, excludeId] : [candidate]))
       .first<{ id: number }>();
     if (!row) return candidate;

@@ -16,6 +16,7 @@ The store is based on [minshop](https://github.com/ddyy/minshop), a Cloudflare W
 For adding or updating products from local folders (such as folders containing `product.json` and product image files):
 
 Use [`scripts/sync-products.mjs`](file:///Users/amanda/git/rave-store/scripts/sync-products.mjs):
+
 ```bash
 # Sync products, categories, and upload/link missing images to remote production (default)
 bun scripts/sync-products.mjs /path/to/PRODUCTS
@@ -25,6 +26,7 @@ bun scripts/sync-products.mjs /path/to/PRODUCTS --local
 ```
 
 ### What `scripts/sync-products.mjs` Does:
+
 1. **Idempotent Product Sync**: Connects to the store MCP server and creates new products or updates existing ones (`name`, `price_cents`, `stock`, `description`).
 2. **Category Hierarchy**: Automatically registers any missing parent categories or subcategories in D1, then assigns the category associations to each product.
 3. **Image Upload & Product Association**:
@@ -40,6 +42,7 @@ bun scripts/sync-products.mjs /path/to/PRODUCTS --local
 The `rave-store` MCP server provides two tiers of tools:
 
 ### Operator Tier (Admin / Management)
+
 Requires operator credentials (`Authorization: Bearer <MCP_TOKEN>`). Configured automatically in Antigravity, Claude, and ChatGPT Codex:
 
 - `create_product`: Create a new product.
@@ -49,7 +52,7 @@ Requires operator credentials (`Authorization: Bearer <MCP_TOKEN>`). Configured 
   - `stock` (integer, optional, default: 0): Available inventory count.
   - `currency` (string, optional, default: "usd"): Currency code (lowercase).
   - `active` (boolean, optional, default: true): Whether product is visible on storefront.
-  - *Returns*: `{ id: "prod_...", slug: "..." }`.
+  - _Returns_: `{ id: "prod_...", slug: "..." }`.
 
 - `update_product`: Update an existing product.
   - `id` (string, required): `prod_...` public ID or existing product slug. Numeric IDs are rejected.
@@ -59,17 +62,18 @@ Requires operator credentials (`Authorization: Bearer <MCP_TOKEN>`). Configured 
   - `stock` (integer, optional): Updated inventory stock count.
   - `currency` (string, optional): Updated currency code.
   - `active` (boolean, optional): Set true to publish or false to unpublish/hide.
-  - *Returns*: `{ id: "prod_...", slug: "..." }`.
+  - _Returns_: `{ id: "prod_...", slug: "..." }`.
 
 - `list_products`: Paginate through catalog items (admin view: includes inactive products and sold counts).
   - `limit` (integer, optional, default: 50, max: 200).
   - `offset` (integer, optional, default: 0).
-  - *Returns*: `{ products: [...], total: number, limit: number, offset: number }`.
+  - _Returns_: `{ products: [...], total: number, limit: number, offset: number }`.
 
 - `get_product`: Retrieve detailed admin information for one product by its `prod_...` public ID or slug.
   - `id` (string, required): `prod_...` public ID or slug.
 
 ### Buyer Tier (Public Catalog & Storefront API)
+
 Always accessible without credentials:
 
 - `browse_products`: Search or list active, in-stock products with public pricing, URLs, image links, and assigned categories.

@@ -113,14 +113,14 @@ src/
 **Ports & adapters (the seams).** Routes depend on interfaces, never on a vendor.
 To swap/add a provider, write one adapter file + wire the factory:
 
-| Port | Where | Factory | Adapters |
-|---|---|---|---|
-| `PaymentProvider` | `payments/provider.ts` | `payments/index.ts` | stripe, opennode, lightning |
-| `LightningBackend` | `payments/lightning/backend.ts` | `payments/lightning/index.ts` | phoenixd, lnbits |
-| `ShippingCalculator` | `shipping/calculator.ts` | (config-rates) | carrier rates (future) |
-| `StorageProvider` | `storage/provider.ts` | `storage/index.ts` | r2 |
-| `EmailProvider` | `email/provider.ts` | `email/index.ts` | resend, cloudflare |
-| `SearchProvider` | `search/provider.ts` | `search/index.ts` | fts, vector (Workers AI + Vectorize) |
+| Port                 | Where                           | Factory                       | Adapters                             |
+| -------------------- | ------------------------------- | ----------------------------- | ------------------------------------ |
+| `PaymentProvider`    | `payments/provider.ts`          | `payments/index.ts`           | stripe, opennode, lightning          |
+| `LightningBackend`   | `payments/lightning/backend.ts` | `payments/lightning/index.ts` | phoenixd, lnbits                     |
+| `ShippingCalculator` | `shipping/calculator.ts`        | (config-rates)                | carrier rates (future)               |
+| `StorageProvider`    | `storage/provider.ts`           | `storage/index.ts`            | r2                                   |
+| `EmailProvider`      | `email/provider.ts`             | `email/index.ts`              | resend, cloudflare                   |
+| `SearchProvider`     | `search/provider.ts`            | `search/index.ts`             | fts, vector (Workers AI + Vectorize) |
 
 **Bindings.** Access Cloudflare bindings via `import { env } from 'cloudflare:workers'`
 (typed by `Cloudflare.Env` in `env.d.ts`). Never `Astro.locals.runtime.env`
@@ -250,7 +250,7 @@ These cost afternoons. Most are in the README "Gotchas" section too.
 
 ## Conventions
 
-- Comments explain *why*, match surrounding density. No attribution in commits.
+- Comments explain _why_, match surrounding density. No attribution in commits.
 - Colocate tests: `foo.ts` + `foo.test.ts`. Test pure logic; integration (D1/R2)
   is verified against `wrangler dev`.
 - Don't install npm packages without asking. Don't run deploy/publish commands

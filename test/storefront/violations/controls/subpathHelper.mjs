@@ -4,6 +4,6 @@
 // .mjs rather than .astro so it does not need node type declarations to
 // type-check — the point being proven is the checker's matching, not the file's
 // component shape.
-import { readFile } from 'node:fs/promises';
+import { readFile } from "node:fs/promises";
 
 export const read = readFile;

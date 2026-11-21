@@ -1,5 +1,5 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 import {
   getProduct,
   getProductByPublicId,
@@ -8,35 +8,32 @@ import {
   updateProduct,
   deleteProduct,
   setProductFile,
-} from '../../../../features/products/db';
-import { parseProductForm } from '../../../../features/products/form';
-import { zonesRequireWeight } from '../../../../features/shipping/calculator';
-import { shippingFor } from '../../../../features/shipping/effective';
-import { uniqueSlug } from '../../../../features/products/slug';
-import {
-  setProductCategories,
-  getCategoriesByPublicIds,
-} from '../../../../features/categories/db';
+} from "../../../../features/products/db";
+import { parseProductForm } from "../../../../features/products/form";
+import { zonesRequireWeight } from "../../../../features/shipping/calculator";
+import { shippingFor } from "../../../../features/shipping/effective";
+import { uniqueSlug } from "../../../../features/products/slug";
+import { setProductCategories, getCategoriesByPublicIds } from "../../../../features/categories/db";
 import {
   applyVariantForm,
   validateVariantWeights,
   listVariants,
   listExtras,
-} from '../../../../features/products/variants';
-import { validateImage } from '../../../../features/products/image';
-import { optimizeUpload } from '../../../../features/products/imageOptimize';
-import { uploadMedia } from '../../../../features/media/upload';
+} from "../../../../features/products/variants";
+import { validateImage } from "../../../../features/products/image";
+import { optimizeUpload } from "../../../../features/products/imageOptimize";
+import { uploadMedia } from "../../../../features/media/upload";
+import { attachMediaToProduct, replaceProductImageFromMedia } from "../../../../features/media/db";
+import { getStorage, getFileStorage } from "../../../../features/storage";
 import {
-  attachMediaToProduct,
-  replaceProductImageFromMedia,
-} from '../../../../features/media/db';
-import { getStorage, getFileStorage } from '../../../../features/storage';
-import { uploadDigitalFile, validateDigitalFile } from '../../../../features/products/digitalFile.ts';
-import { attachmentActive } from '../../../../features/digitalDelivery/rollout.ts';
-import { indexProduct, unindexProduct } from '../../../../features/search';
-import { parsePublicId } from '../../../../features/ids/publicId';
-import { CACHE_TAG } from '../../../../features/cache/tags';
-import { purgeCacheTags } from '../../../../features/cache/purge';
+  uploadDigitalFile,
+  validateDigitalFile,
+} from "../../../../features/products/digitalFile.ts";
+import { attachmentActive } from "../../../../features/digitalDelivery/rollout.ts";
+import { indexProduct, unindexProduct } from "../../../../features/search";
+import { parsePublicId } from "../../../../features/ids/publicId";
+import { CACHE_TAG } from "../../../../features/cache/tags";
+import { purgeCacheTags } from "../../../../features/cache/purge";
 
 export const prerender = false;
 
@@ -53,19 +50,19 @@ async function resolveVariantFormIds(
   productId: number,
 ): Promise<string | null> {
   const variants = new Map(
-    (await listVariants(db, productId, true)).map((v) => [v.public_id ?? '', v.id]),
+    (await listVariants(db, productId, true)).map((v) => [v.public_id ?? "", v.id]),
   );
   const extras = new Map(
-    (await listExtras(db, productId, true)).map((e) => [e.public_id ?? '', e.id]),
+    (await listExtras(db, productId, true)).map((e) => [e.public_id ?? "", e.id]),
   );
   const images = new Map(
-    (await listProductImages(db, productId)).map((i) => [i.public_id ?? '', i.id]),
+    (await listProductImages(db, productId)).map((i) => [i.public_id ?? "", i.id]),
   );
 
   const translate = (
     field: string,
     map: Map<string, number>,
-    kind: 'variant' | 'extra' | 'productImage',
+    kind: "variant" | "extra" | "productImage",
   ): boolean => {
     const values = form.getAll(field).map((v) => String(v));
     if (values.length === 0) return true;
@@ -73,7 +70,7 @@ async function resolveVariantFormIds(
     for (const raw of values) {
       const value = raw.trim();
       if (!value) {
-        out.push('');
+        out.push("");
         continue;
       }
       const parsed = parsePublicId(value, kind);
@@ -86,14 +83,14 @@ async function resolveVariantFormIds(
     return true;
   };
 
-  if (!translate('v_id', variants, 'variant') || !translate('v_remove', variants, 'variant')) {
-    return 'One of the variants no longer exists — reload and try again.';
+  if (!translate("v_id", variants, "variant") || !translate("v_remove", variants, "variant")) {
+    return "One of the variants no longer exists — reload and try again.";
   }
-  if (!translate('e_id', extras, 'extra') || !translate('e_remove', extras, 'extra')) {
-    return 'One of the add-ons no longer exists — reload and try again.';
+  if (!translate("e_id", extras, "extra") || !translate("e_remove", extras, "extra")) {
+    return "One of the add-ons no longer exists — reload and try again.";
   }
-  if (!translate('v_image', images, 'productImage')) {
-    return 'One of the variant photos no longer exists — reload and try again.';
+  if (!translate("v_image", images, "productImage")) {
+    return "One of the variant photos no longer exists — reload and try again.";
   }
   return null;
 }
@@ -101,15 +98,15 @@ async function resolveVariantFormIds(
 // POST /api/admin/products/:id — update (with optional image replace), or delete
 // when `_action=delete`. :id is the prod_ public ID; numeric ids are not accepted.
 export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
-  const publicId = parsePublicId(params.id, 'product');
+  const publicId = parsePublicId(params.id, "product");
   const existing = publicId ? await getProductByPublicId(env.DB, publicId) : null;
-  if (!publicId || !existing) return new Response('Not found', { status: 404 });
+  if (!publicId || !existing) return new Response("Not found", { status: 404 });
   const id = existing.id;
 
   const form = await request.formData();
   const storage = getStorage();
 
-  if (String(form.get('_action')) === 'delete') {
+  if (String(form.get("_action")) === "delete") {
     // Removes the product and its image ASSOCIATIONS. The files stay in the
     // media library — they may be used by other products or pages, and the
     // library is the only place an object is deleted.
@@ -117,10 +114,10 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
     try {
       await unindexProduct(id); // no-op unless vector search is on
     } catch (err) {
-      console.error('Search unindex (delete) failed:', err);
+      console.error("Search unindex (delete) failed:", err);
     }
     await purgeCacheTags([CACHE_TAG.catalog, CACHE_TAG.product(publicId)]);
-    return redirect('/admin/products', 303);
+    return redirect("/admin/products", 303);
   }
 
   const fail = (msg: string) =>
@@ -129,12 +126,12 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
   // The store's display unit, plus whether a blank weight would make this product
   // unsellable (every enabled zone prices by weight). Both come from settings the
   // request already loaded.
-  const weightUnit = locals.settings?.weightUnit ?? 'g';
+  const weightUnit = locals.settings?.weightUnit ?? "g";
   const parsed = parseProductForm(form, {
     unit: weightUnit,
     requireWeight: zonesRequireWeight(shippingFor(locals.settings).config),
   });
-  if ('error' in parsed) return fail(parsed.error);
+  if ("error" in parsed) return fail(parsed.error);
 
   // Weights are checked before ANY write. applyVariantForm runs last, after the
   // image, product, and category mutations — reporting the error from there left
@@ -152,14 +149,14 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
   // products.image_key from it.
   const image_key = existing.image_key ?? null;
   let uploadedMediaId: number | null = null;
-  const file = form.get('image');
+  const file = form.get("image");
   if (file instanceof File && file.size > 0) {
     const imgErr = validateImage(file);
     if (imgErr) return fail(imgErr);
     const media = await uploadMedia(env.DB, storage, await optimizeUpload(file), file.name);
     uploadedMediaId = media.id;
   }
-  const deliverable = form.get('deliverable');
+  const deliverable = form.get("deliverable");
   if (attachmentActive() && deliverable instanceof File && deliverable.size > 0) {
     const fileError = validateDigitalFile(deliverable);
     if (fileError) return fail(fileError);
@@ -167,7 +164,7 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
 
   // Keep the slug stable on rename: use the form's slug field (pre-filled with
   // the current slug), falling back to the existing slug, then the name.
-  const slugBase = String(form.get('slug') ?? '').trim() || existing.slug || parsed.data.name;
+  const slugBase = String(form.get("slug") ?? "").trim() || existing.slug || parsed.data.name;
   const slug = await uniqueSlug(env.DB, slugBase, id);
 
   // Claim the image BEFORE committing anything else. A failed claim then aborts
@@ -189,11 +186,11 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
   }
 
   if (!(await updateProduct(env.DB, id, { ...parsed.data, slug }))) {
-    return fail('This product no longer exists.');
+    return fail("This product no longer exists.");
   }
   if (attachmentActive() && deliverable instanceof File && deliverable.size > 0) {
     await setProductFile(env.DB, id, await uploadDigitalFile(getFileStorage(), deliverable));
-  } else if (attachmentActive() && form.get('remove_deliverable') != null) {
+  } else if (attachmentActive() && form.get("remove_deliverable") != null) {
     await setProductFile(env.DB, id, null);
   }
   // products.image_key follows the gallery, so this runs after both.
@@ -202,8 +199,8 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
   // Replace category links (empty set clears them). Membership arrives as cat_
   // public IDs and is resolved to row ids here at the boundary.
   const categoryPublicIds = form
-    .getAll('category')
-    .map((v) => parsePublicId(v, 'category'))
+    .getAll("category")
+    .map((v) => parsePublicId(v, "category"))
     .filter((v): v is string => v !== null);
   const categoryIds = (await getCategoriesByPublicIds(env.DB, categoryPublicIds)).map((c) => c.id);
   await setProductCategories(env.DB, id, categoryIds);
@@ -219,9 +216,9 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
     const updated = await getProduct(env.DB, id);
     if (updated) await indexProduct(updated);
   } catch (err) {
-    console.error('Search index (update) failed:', err);
+    console.error("Search index (update) failed:", err);
   }
 
   await purgeCacheTags([CACHE_TAG.catalog, CACHE_TAG.product(publicId)]);
-  return redirect('/admin/products', 303);
+  return redirect("/admin/products", 303);
 };

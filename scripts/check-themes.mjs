@@ -27,12 +27,12 @@
  *
  * Usage: bun scripts/check-themes.mjs [dir...]
  */
-import { readdir, readFile, stat } from 'node:fs/promises';
-import { dirname, join, normalize, relative } from 'node:path/posix';
-import { THEMES_DIR, discoverThemeIds } from './themes.mjs';
+import { readdir, readFile, stat } from "node:fs/promises";
+import { dirname, join, normalize, relative } from "node:path/posix";
+import { THEMES_DIR, discoverThemeIds } from "./themes.mjs";
 
-const CONTROLS_DIR = 'src/features/storefront/controls';
-const MODELS_MODULE = 'src/features/storefront/models.ts';
+const CONTROLS_DIR = "src/features/storefront/controls";
+const MODELS_MODULE = "src/features/storefront/models.ts";
 
 /**
  * Every theme is its own root, whether it is the selected one or not.
@@ -49,7 +49,7 @@ const MODELS_MODULE = 'src/features/storefront/models.ts';
 function defaultPaths() {
   return [
     ...discoverThemeIds().map((id) => `${THEMES_DIR}/${id}`),
-    'test/storefront/fixtures',
+    "test/storefront/fixtures",
     CONTROLS_DIR,
   ];
 }
@@ -57,7 +57,7 @@ function defaultPaths() {
 /** Request-context members neither policy allows. `Astro.props`/`Astro.slots`
  *  are the intended component contract, so the match is member-by-member rather
  *  than a ban on the `Astro.` prefix. */
-const FORBIDDEN_CONTEXT = ['locals', 'request', 'url', 'response'];
+const FORBIDDEN_CONTEXT = ["locals", "request", "url", "response"];
 
 /**
  * Dependencies nothing in the storefront graph may reach, directly or through
@@ -65,32 +65,32 @@ const FORBIDDEN_CONTEXT = ['locals', 'request', 'url', 'response'];
  * relative specifier cannot dodge the rule by its shape.
  */
 const DENIED_PATHS = [
-  { prefix: 'src/config', why: 'binding-aware config (use a pure helper or a model field)' },
-  { prefix: 'src/features/products/db', why: 'a D1 query module' },
-  { prefix: 'src/features/orders', why: 'order data' },
-  { prefix: 'src/features/categories/db', why: 'a D1 query module' },
-  { prefix: 'src/features/settings/db', why: 'a D1 query module' },
-  { prefix: 'src/features/customers', why: 'customer data' },
-  { prefix: 'src/features/pages/db', why: 'a D1 query module' },
-  { prefix: 'src/features/media/db', why: 'a D1 query module' },
-  { prefix: 'src/features/navigation/db', why: 'a D1 query module' },
-  { prefix: 'src/features/payments', why: 'payment code' },
-  { prefix: 'src/features/refunds', why: 'refund code' },
-  { prefix: 'src/features/auth', why: 'authentication code' },
-  { prefix: 'src/features/secrets', why: 'secret material' },
-  { prefix: 'src/features/cart', why: 'cart state' },
-  { prefix: 'src/features/shipping', why: 'shipping code' },
-  { prefix: 'src/features/storage', why: 'a storage adapter' },
-  { prefix: 'src/pages/admin', why: 'Admin routes' },
-  { prefix: 'src/middleware', why: 'request middleware' },
+  { prefix: "src/config", why: "binding-aware config (use a pure helper or a model field)" },
+  { prefix: "src/features/products/db", why: "a D1 query module" },
+  { prefix: "src/features/orders", why: "order data" },
+  { prefix: "src/features/categories/db", why: "a D1 query module" },
+  { prefix: "src/features/settings/db", why: "a D1 query module" },
+  { prefix: "src/features/customers", why: "customer data" },
+  { prefix: "src/features/pages/db", why: "a D1 query module" },
+  { prefix: "src/features/media/db", why: "a D1 query module" },
+  { prefix: "src/features/navigation/db", why: "a D1 query module" },
+  { prefix: "src/features/payments", why: "payment code" },
+  { prefix: "src/features/refunds", why: "refund code" },
+  { prefix: "src/features/auth", why: "authentication code" },
+  { prefix: "src/features/secrets", why: "secret material" },
+  { prefix: "src/features/cart", why: "cart state" },
+  { prefix: "src/features/shipping", why: "shipping code" },
+  { prefix: "src/features/storage", why: "a storage adapter" },
+  { prefix: "src/pages/admin", why: "Admin routes" },
+  { prefix: "src/middleware", why: "request middleware" },
 ];
 
 const DENIED_MODULES = [
-  { name: 'cloudflare:workers', why: 'runtime bindings' },
-  { name: 'node:fs', why: 'filesystem access' },
+  { name: "cloudflare:workers", why: "runtime bindings" },
+  { name: "node:fs", why: "filesystem access" },
 ];
 
-const SOURCE_EXTENSIONS = ['.astro', '.ts', '.tsx', '.mjs', '.js'];
+const SOURCE_EXTENSIONS = [".astro", ".ts", ".tsx", ".mjs", ".js"];
 
 /**
  * Comments are stripped before scanning. Storefront files are expected to
@@ -98,11 +98,13 @@ const SOURCE_EXTENSIONS = ['.astro', '.ts', '.tsx', '.mjs', '.js'];
  * would fail exactly the components that explain themselves best.
  */
 function stripComments(source) {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/<!--[\s\S]*?-->/g, ' ')
-    // Not `://`, so protocol-relative URLs and https: literals survive.
-    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  return (
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      // Not `://`, so protocol-relative URLs and https: literals survive.
+      .replace(/(^|[^:])\/\/[^\n]*/g, "$1")
+  );
 }
 
 /**
@@ -141,7 +143,7 @@ function importsOf(source) {
 
 /** Resolve a relative specifier to an actual file, repo-relative. */
 async function resolveLocal(specifier, fromFile) {
-  if (!specifier.startsWith('.')) return null;
+  if (!specifier.startsWith(".")) return null;
   const base = normalize(join(dirname(fromFile), specifier));
   const candidates = [
     base,
@@ -175,7 +177,7 @@ async function* walk(dir) {
 }
 
 const problems = [];
-const describeChain = (chain) => chain.join('\n      → ');
+const describeChain = (chain) => chain.join("\n      → ");
 
 function checkDeniedDependency(specifier, resolved, chain) {
   // Subpath-aware: an exact match would let `node:fs/promises` or
@@ -192,7 +194,10 @@ function checkDeniedDependency(specifier, resolved, chain) {
   }
   if (!resolved) return;
   const denied = DENIED_PATHS.find(
-    (rule) => resolved === rule.prefix || resolved.startsWith(`${rule.prefix}.`) || resolved.startsWith(`${rule.prefix}/`),
+    (rule) =>
+      resolved === rule.prefix ||
+      resolved.startsWith(`${rule.prefix}.`) ||
+      resolved.startsWith(`${rule.prefix}/`),
   );
   if (denied) {
     problems.push(
@@ -219,7 +224,7 @@ function checkRequestContext(file, source) {
  * controls, and files inside their own candidate root.
  */
 function checkTemplateImport({ specifier, typeOnly }, resolved, file, rootDir) {
-  if (resolved && !relative(rootDir, resolved).startsWith('..')) return;
+  if (resolved && !relative(rootDir, resolved).startsWith("..")) return;
   if (resolved === MODELS_MODULE) {
     if (!typeOnly) {
       problems.push(
@@ -254,7 +259,7 @@ async function checkEntry(entry, rootDir, policy) {
 
     let source;
     try {
-      source = stripComments(await readFile(file, 'utf8'));
+      source = stripComments(await readFile(file, "utf8"));
     } catch {
       continue;
     }
@@ -265,7 +270,7 @@ async function checkEntry(entry, rootDir, policy) {
       const resolved = await resolveLocal(imported.specifier, file);
       checkDeniedDependency(imported.specifier, resolved, chain);
 
-      if (policy === 'template' && file === entry) {
+      if (policy === "template" && file === entry) {
         checkTemplateImport(imported, resolved, file, rootDir);
       }
 
@@ -281,20 +286,20 @@ async function checkEntry(entry, rootDir, policy) {
 
 const paths = process.argv.slice(2);
 for (const rawRoot of paths.length > 0 ? paths : defaultPaths()) {
-  const root = rawRoot.replace(/\/+$/, '');
+  const root = rawRoot.replace(/\/+$/, "");
   // A root named `controls` takes the core-control policy. Matching the
   // directory name rather than one hardcoded path lets the same checker be
   // pointed at a candidate theme or a future preset.
-  const policy = /(^|\/)controls$/.test(root) ? 'control' : 'template';
+  const policy = /(^|\/)controls$/.test(root) ? "control" : "template";
   for await (const file of walk(root)) {
     await checkEntry(file, root, policy);
   }
 }
 
 if (problems.length > 0) {
-  console.error('Storefront boundary check failed:\n');
+  console.error("Storefront boundary check failed:\n");
   for (const problem of problems) console.error(`  ${problem}\n`);
   process.exit(1);
 }
 
-console.log('storefront boundary: ok');
+console.log("storefront boundary: ok");

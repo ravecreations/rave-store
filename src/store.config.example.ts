@@ -1,4 +1,4 @@
-import type { DeepPartial, SiteConfig } from './config';
+import type { DeepPartial, SiteConfig } from "./config";
 
 /**
  * Copy this file to `store.config.ts` and edit it — that's the only config file

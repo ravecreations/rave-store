@@ -10,7 +10,7 @@
  * unit tests and scripts/check-stripe-countries.mjs can load it directly.
  */
 
-import { COUNTRY_CODES, isCountryCode } from '../shipping/countries.ts';
+import { COUNTRY_CODES, isCountryCode } from "../shipping/countries.ts";
 
 /**
  * Exactly the ISO alpha-2 codes absent from the pinned SDK's
@@ -21,8 +21,21 @@ import { COUNTRY_CODES, isCountryCode } from '../shipping/countries.ts';
  * from the installed SDK.
  */
 export const STRIPE_UNSUPPORTED: ReadonlySet<string> = new Set([
-  'AS', 'CC', 'CU', 'CX', 'FM', 'HM', 'IR', 'KP',
-  'MH', 'MP', 'NF', 'PW', 'SY', 'UM', 'VI',
+  "AS",
+  "CC",
+  "CU",
+  "CX",
+  "FM",
+  "HM",
+  "IR",
+  "KP",
+  "MH",
+  "MP",
+  "NF",
+  "PW",
+  "SY",
+  "UM",
+  "VI",
 ]);
 
 export function stripeAllowedCountries(explicit: string[], hasCatchAll: boolean): string[] {

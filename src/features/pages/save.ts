@@ -1,7 +1,7 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import { findMediaByKeys, pageMediaClaimStatements } from '../media/db.ts';
-import { extractMediaKeys } from './markdown.ts';
-import { type Page } from './db.ts';
+import type { D1Database } from "@cloudflare/workers-types";
+import { findMediaByKeys, pageMediaClaimStatements } from "../media/db.ts";
+import { extractMediaKeys } from "./markdown.ts";
+import { type Page } from "./db.ts";
 
 export interface SaveResult {
   /** Keys the body references that are not in the media library. */
@@ -84,7 +84,7 @@ export async function savePageBody(
 
   // Read back what the transaction actually stored rather than assuming.
   const saved = await db
-    .prepare('SELECT published FROM pages WHERE id = ?')
+    .prepare("SELECT published FROM pages WHERE id = ?")
     .bind(existing.id)
     .first<{ published: number }>();
   const published = saved?.published ?? blockedValue;
@@ -98,10 +98,10 @@ export async function savePageBody(
 
 /** Admin-facing summary of what happened, or '' when everything resolved. */
 export function saveWarning(result: SaveResult): string {
-  if (result.unresolved.length === 0 && !result.publishRefused) return '';
+  if (result.unresolved.length === 0 && !result.publishRefused) return "";
   const count = Math.max(result.unresolved.length, 1);
-  const images = `${count} image${count === 1 ? '' : 's'}`;
-  const is = count === 1 ? 'is' : 'are';
+  const images = `${count} image${count === 1 ? "" : "s"}`;
+  const is = count === 1 ? "is" : "are";
   if (result.publishRefused) {
     return `Changes saved, but this page was not published because ${images} ${is} missing from the media library.`;
   }

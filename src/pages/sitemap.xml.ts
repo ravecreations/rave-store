@@ -1,11 +1,11 @@
-import type { APIRoute } from 'astro';
-import { PUBLIC_CACHE_CONTROL } from '../features/cache/public';
-import { env } from 'cloudflare:workers';
-import { listProducts, countProducts } from '../features/products/db';
-import { listCategories } from '../features/categories/db';
-import { listPublishedPages } from '../features/pages/db';
-import { catalogPath } from '../features/settings/home';
-import { publicOrigin } from '../features/http/origin';
+import type { APIRoute } from "astro";
+import { PUBLIC_CACHE_CONTROL } from "../features/cache/public";
+import { env } from "cloudflare:workers";
+import { listProducts, countProducts } from "../features/products/db";
+import { listCategories } from "../features/categories/db";
+import { listPublishedPages } from "../features/pages/db";
+import { catalogPath } from "../features/settings/home";
+import { publicOrigin } from "../features/http/origin";
 
 export const prerender = false;
 
@@ -51,14 +51,14 @@ export const GET: APIRoute = async ({ url, locals }) => {
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${locs.map((l) => `  <url><loc>${l}</loc></url>`).join('\n')}
+${locs.map((l) => `  <url><loc>${l}</loc></url>`).join("\n")}
 </urlset>
 `;
 
   return new Response(body, {
     headers: {
-      'content-type': 'application/xml; charset=utf-8',
-      'cache-control': PUBLIC_CACHE_CONTROL,
+      "content-type": "application/xml; charset=utf-8",
+      "cache-control": PUBLIC_CACHE_CONTROL,
     },
   });
 };

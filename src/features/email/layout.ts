@@ -12,27 +12,31 @@
  */
 
 export const PALETTE = {
-  brand: '#111827', // --color-brand: buttons, headings
-  paper: '#faf8f4', // --color-paper: page background
-  line: '#e7e2d9', // --color-line: borders + rules
-  card: '#ffffff',
-  text: '#1f2937',
-  muted: '#6b7280',
+  brand: "#111827", // --color-brand: buttons, headings
+  paper: "#faf8f4", // --color-paper: page background
+  line: "#e7e2d9", // --color-line: borders + rules
+  card: "#ffffff",
+  text: "#1f2937",
+  muted: "#6b7280",
 } as const;
 
 /** Serif for the store name (matches the storefront wordmark), system sans for body. */
 const SERIF = "Georgia, 'Times New Roman', serif";
-const SANS =
-  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 export const escapeHtml = (s: string): string =>
   s.replace(/[&<>"']/g, (c) => {
     switch (c) {
-      case '&': return '&amp;';
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '"': return '&quot;';
-      default: return '&#39;';
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      default:
+        return "&#39;";
     }
   });
 
@@ -66,13 +70,7 @@ export interface ShellOptions {
  * Wrap content in the branded shell: store wordmark, white card on paper, footer.
  * `body` is inserted as-is, so callers escape their own interpolations.
  */
-export function emailShell({
-  storeName,
-  heading,
-  subheading,
-  body,
-  footer,
-}: ShellOptions): string {
+export function emailShell({ storeName, heading, subheading, body, footer }: ShellOptions): string {
   return `<div style="margin:0;padding:24px 12px;background:${PALETTE.paper};font-family:${SANS};color:${PALETTE.text};-webkit-font-smoothing:antialiased;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;margin:0 auto;">
     <tr>
@@ -83,14 +81,14 @@ export function emailShell({
     <tr>
       <td style="background:${PALETTE.card};border:1px solid ${PALETTE.line};border-radius:8px;padding:32px 28px;">
         <h1 style="margin:0;font-family:${SERIF};font-size:24px;font-weight:400;line-height:1.25;color:${PALETTE.brand};">${escapeHtml(heading)}</h1>
-        ${subheading ? `<p style="margin:8px 0 0;font-size:14px;color:${PALETTE.muted};">${subheading}</p>` : ''}
+        ${subheading ? `<p style="margin:8px 0 0;font-size:14px;color:${PALETTE.muted};">${subheading}</p>` : ""}
         ${body}
       </td>
     </tr>
     ${
       footer
         ? `<tr><td style="padding:16px 4px 0;font-size:12px;line-height:1.5;color:${PALETTE.muted};">${footer}</td></tr>`
-        : ''
+        : ""
     }
   </table>
 </div>`;
@@ -123,20 +121,20 @@ export function emailItemsTable(items: LineItem[], totals: TotalRow[]): string {
       <td style="padding:10px 0;font-size:14px;text-align:right;white-space:nowrap;border-bottom:1px solid ${PALETTE.line};">${it.amount}</td>
     </tr>`,
     )
-    .join('');
+    .join("");
 
   const totalRows = totals
     .map(({ label, amount, strong }) => {
-      const weight = strong ? 'font-weight:600;' : '';
-      const size = strong ? 'font-size:16px;' : 'font-size:14px;';
-      const rule = strong ? `border-top:1px solid ${PALETTE.line};` : '';
+      const weight = strong ? "font-weight:600;" : "";
+      const size = strong ? "font-size:16px;" : "font-size:14px;";
+      const rule = strong ? `border-top:1px solid ${PALETTE.line};` : "";
       const color = strong ? PALETTE.brand : PALETTE.muted;
       return `<tr>
         <td style="padding:8px 8px 0;${size}${weight}${rule}color:${color};text-align:right;">${escapeHtml(label)}</td>
         <td style="padding:8px 0 0;${size}${weight}${rule}color:${strong ? PALETTE.brand : PALETTE.text};text-align:right;white-space:nowrap;width:96px;">${amount}</td>
       </tr>`;
     })
-    .join('');
+    .join("");
 
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;border-collapse:collapse;">
     ${rows}

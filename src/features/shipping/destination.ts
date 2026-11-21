@@ -12,11 +12,11 @@
  * unsupported one the filter removed.
  */
 
-import type { StoreSettings } from '../settings/db';
-import { enabledMethods } from '../payments';
-import { stripeAllowedCountries } from '../payments/stripeCountries.ts';
-import { allowedCountries, hasCatchAllZone, type ShippingConfig } from './calculator';
-import { COUNTRY_CODES, countryName } from './countries';
+import type { StoreSettings } from "../settings/db";
+import { enabledMethods } from "../payments";
+import { stripeAllowedCountries } from "../payments/stripeCountries.ts";
+import { allowedCountries, hasCatchAllZone, type ShippingConfig } from "./calculator";
+import { COUNTRY_CODES, countryName } from "./countries";
 
 export interface StripeDestination {
   /** Stripe-supported destinations, name-sorted. Empty = no selector at all. */
@@ -40,7 +40,7 @@ export function stripeDestination(
   // `enabledMethods`, not `isMethodAvailable`: a merchant who DISABLED their
   // configured Stripe rail gets no card button, so a card-only selector would be
   // furniture for a flow that cannot happen.
-  const stripeOffered = settings ? enabledMethods(settings).includes('stripe') : false;
+  const stripeOffered = settings ? enabledMethods(settings).includes("stripe") : false;
   const anywhere = hasCatchAllZone(effectiveShipping);
   const countries =
     effectiveShipping.enabled && shippingRequired && stripeOffered
@@ -50,7 +50,7 @@ export function stripeDestination(
         ).sort((a, b) => countryName(a).localeCompare(countryName(b)))
       : [];
   // GeoIP is a guess: it only seeds the selection, never restricts it.
-  const geo = String(geoCountry ?? '').toUpperCase();
+  const geo = String(geoCountry ?? "").toUpperCase();
   const defaultCountry = countries.includes(geo) ? geo : (countries[0] ?? null);
   return {
     countries,

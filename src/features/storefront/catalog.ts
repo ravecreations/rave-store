@@ -1,17 +1,17 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import { listProducts, countProducts } from '../products/db';
-import { listCategories, childrenOf } from '../categories/db';
-import { orderByClause, parseStoreSortQuery, STORE_SORTS } from '../products/sort';
-import { MAX_PUBLIC_PAGE, paginate, queryHref } from '../../pagination';
-import { addCacheTags, productCacheTags } from '../cache/tags';
-import type { ImageDelivery } from '../products/image';
-import { buildProductCard } from './productCard';
+import type { D1Database } from "@cloudflare/workers-types";
+import { listProducts, countProducts } from "../products/db";
+import { listCategories, childrenOf } from "../categories/db";
+import { orderByClause, parseStoreSortQuery, STORE_SORTS } from "../products/sort";
+import { MAX_PUBLIC_PAGE, paginate, queryHref } from "../../pagination";
+import { addCacheTags, productCacheTags } from "../cache/tags";
+import type { ImageDelivery } from "../products/image";
+import { buildProductCard } from "./productCard";
 import type {
   CatalogPageModel,
   StorefrontPaginationItem,
   StorefrontPaginationModel,
   StorefrontSortModel,
-} from './models';
+} from "./models";
 
 /**
  * The catalog loader.
@@ -25,7 +25,7 @@ import type {
 const PAGE_SIZE = 24;
 
 /** Matches the card slot in the default three-column grid. */
-const CARD_SIZES = '(min-width: 1024px) 352px, calc(50vw - 36px)';
+const CARD_SIZES = "(min-width: 1024px) 352px, calc(50vw - 36px)";
 
 /**
  * Sort links deliberately drop `page`: changing the ordering while holding page
@@ -37,13 +37,17 @@ const CARD_SIZES = '(min-width: 1024px) 352px, calc(50vw - 36px)';
  * path renders the same list, which is a duplicate-URL question worth revisiting
  * separately rather than changing inside an extraction.
  */
-export function buildSortModel(base: string, sort: string, dir: 'asc' | 'desc'): StorefrontSortModel {
+export function buildSortModel(
+  base: string,
+  sort: string,
+  dir: "asc" | "desc",
+): StorefrontSortModel {
   return {
     options: STORE_SORTS.map((option) => {
       const current = sort === option.sort;
       // Re-clicking the active field flips it; an inactive field applies its own
       // natural direction (price ascending, newest descending).
-      const nextDir = current ? (dir === 'asc' ? 'desc' : 'asc') : option.dir;
+      const nextDir = current ? (dir === "asc" ? "desc" : "asc") : option.dir;
       return {
         label: option.label,
         href: queryHref(base, { sort: option.sort, dir: nextDir }),
@@ -73,14 +77,14 @@ export function buildPaginationModel(
   page: number,
   totalPages: number,
   sort: string,
-  dir: 'asc' | 'desc',
+  dir: "asc" | "desc",
 ): StorefrontPaginationModel {
   // Defaults are omitted from the query so page 1 of the default sort is the
   // bare path — the same URL the canonical points at.
   const hrefFor = (target: number) =>
     queryHref(base, {
-      sort: sort === 'newest' ? undefined : sort,
-      dir: dir === 'desc' ? undefined : dir,
+      sort: sort === "newest" ? undefined : sort,
+      dir: dir === "desc" ? undefined : dir,
       page: target > 1 ? target : undefined,
     });
 
@@ -122,8 +126,8 @@ export async function loadCatalogPage(
   options: CatalogPageOptions,
 ): Promise<CatalogPageModel> {
   const { sort, dir } = parseStoreSortQuery(
-    options.searchParams.get('sort'),
-    options.searchParams.get('dir'),
+    options.searchParams.get("sort"),
+    options.searchParams.get("dir"),
   );
   const order = orderByClause(sort, dir);
 

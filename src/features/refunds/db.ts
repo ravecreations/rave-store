@@ -16,8 +16,8 @@
 // RETURNING tells us whether it actually applied. The same pattern the order
 // settlement path uses (orders/db.ts).
 
-import type { Order } from '../orders/db';
-import { generatePublicId, isPublicIdConflict } from '../ids/publicId.ts';
+import type { Order } from "../orders/db";
+import { generatePublicId, isPublicIdConflict } from "../ids/publicId.ts";
 
 /** Ledger kinds. See migration 0025 for what each one means. */
 
@@ -29,12 +29,12 @@ import { generatePublicId, isPublicIdConflict } from '../ids/publicId.ts';
  */
 async function batchWithRefundId<T>(
   db: D1Database,
-  build: (publicId: string) => ReturnType<D1Database['prepare']>[],
+  build: (publicId: string) => ReturnType<D1Database["prepare"]>[],
 ): Promise<D1Result<T>[]> {
   let lastErr: unknown;
   for (let i = 0; i < 3; i++) {
     try {
-      return await db.batch<T>(build(generatePublicId('refund')));
+      return await db.batch<T>(build(generatePublicId("refund")));
     } catch (err) {
       if (!isPublicIdConflict(err)) throw err;
       lastErr = err;
@@ -44,14 +44,14 @@ async function batchWithRefundId<T>(
 }
 
 export type RefundKind =
-  | 'provider_api'
-  | 'provider_sync'
-  | 'manual_external'
-  | 'manual_reversal'
-  | 'demo'
-  | 'legacy';
+  | "provider_api"
+  | "provider_sync"
+  | "manual_external"
+  | "manual_reversal"
+  | "demo"
+  | "legacy";
 
-export type RefundStatus = 'pending' | 'succeeded' | 'failed' | 'canceled';
+export type RefundStatus = "pending" | "succeeded" | "failed" | "canceled";
 
 export interface Refund {
   id: number;
@@ -82,10 +82,10 @@ export interface Refund {
  * more than the remaining balance". One read after the batch tells them apart.
  */
 export type RefundFailure =
-  | 'duplicate'
-  | 'insufficient_balance'
-  | 'not_refundable'
-  | 'invalid_amount';
+  | "duplicate"
+  | "insufficient_balance"
+  | "not_refundable"
+  | "invalid_amount";
 
 export type RefundResult =
   | { ok: true; refund: Refund; refundedCents: number; fullyRefunded: boolean }
@@ -99,14 +99,8 @@ export function refundableCents(order: Order): number {
   return Math.max(0, order.amount_total_cents - order.refunded_cents);
 }
 
-async function findByIdempotencyKey(
-  db: D1Database,
-  key: string,
-): Promise<Refund | null> {
-  return db
-    .prepare('SELECT * FROM refunds WHERE idempotency_key = ?')
-    .bind(key)
-    .first<Refund>();
+async function findByIdempotencyKey(db: D1Database, key: string): Promise<Refund | null> {
+  return db.prepare("SELECT * FROM refunds WHERE idempotency_key = ?").bind(key).first<Refund>();
 }
 
 async function orderTotals(
@@ -114,7 +108,7 @@ async function orderTotals(
   orderId: number,
 ): Promise<{ refunded_cents: number; amount_total_cents: number } | null> {
   return db
-    .prepare('SELECT refunded_cents, amount_total_cents FROM orders WHERE id = ?')
+    .prepare("SELECT refunded_cents, amount_total_cents FROM orders WHERE id = ?")
     .bind(orderId)
     .first();
 }
@@ -124,7 +118,7 @@ export interface ExternalRefundInput {
   amountCents: number;
   /** Caller-supplied so a double-submitted form collapses to one refund. */
   idempotencyKey: string;
-  kind?: Extract<RefundKind, 'manual_external' | 'demo'>;
+  kind?: Extract<RefundKind, "manual_external" | "demo">;
   reason?: string | null;
   note?: string | null;
   createdBy?: string | null;
@@ -155,7 +149,7 @@ export async function recordExternalRefund(
     orderId,
     amountCents,
     idempotencyKey,
-    kind = 'manual_external',
+    kind = "manual_external",
     reason = null,
     note = null,
     createdBy = null,
@@ -163,7 +157,7 @@ export async function recordExternalRefund(
   } = input;
 
   if (!Number.isInteger(amountCents) || amountCents <= 0) {
-    return { ok: false, reason: 'invalid_amount' };
+    return { ok: false, reason: "invalid_amount" };
   }
 
   const buildStatements = (publicId: string) => [
@@ -230,9 +224,9 @@ export async function recordExternalRefund(
   if (!applied) {
     // Nothing moved. Which of the two guards rejected it?
     const existing = await findByIdempotencyKey(db, idempotencyKey);
-    if (existing) return { ok: false, reason: 'duplicate', refund: existing };
+    if (existing) return { ok: false, reason: "duplicate", refund: existing };
     const totals = await orderTotals(db, orderId);
-    return { ok: false, reason: totals ? 'insufficient_balance' : 'not_refundable' };
+    return { ok: false, reason: totals ? "insufficient_balance" : "not_refundable" };
   }
 
   const refund = await findByIdempotencyKey(db, idempotencyKey);
@@ -267,7 +261,7 @@ export type ProviderSyncResult =
       fullyRefunded: boolean;
       refund: Refund;
     }
-  | { ok: false; reason: 'not_found' | 'no_change' };
+  | { ok: false; reason: "not_found" | "no_change" };
 
 /**
  * Synchronise the provider's own cumulative refunded total onto the order.
@@ -297,11 +291,11 @@ export async function syncProviderRefund(
 
   const current = await db
     .prepare(
-      'SELECT provider_refunded_cents AS p, amount_total_cents AS t FROM orders WHERE id = ?',
+      "SELECT provider_refunded_cents AS p, amount_total_cents AS t FROM orders WHERE id = ?",
     )
     .bind(orderId)
     .first<{ p: number; t: number }>();
-  if (!current) return { ok: false, reason: 'not_found' };
+  if (!current) return { ok: false, reason: "not_found" };
 
   // The read above is only a fast path for the common "nothing new" webhook.
   // The authoritative check is the guarded UPDATE below, which re-evaluates
@@ -412,13 +406,13 @@ export async function voidRecordedRefund(
   const { refundId, idempotencyKey, reason = null, createdBy = null } = input;
 
   const target = await db
-    .prepare('SELECT * FROM refunds WHERE id = ?')
+    .prepare("SELECT * FROM refunds WHERE id = ?")
     .bind(refundId)
     .first<Refund>();
-  if (!target) return { ok: false, reason: 'not_refundable' };
-  if (target.status !== 'succeeded') return { ok: false, reason: 'not_refundable' };
-  if (target.kind !== 'manual_external' && target.kind !== 'demo') {
-    return { ok: false, reason: 'not_refundable' };
+  if (!target) return { ok: false, reason: "not_refundable" };
+  if (target.status !== "succeeded") return { ok: false, reason: "not_refundable" };
+  if (target.kind !== "manual_external" && target.kind !== "demo") {
+    return { ok: false, reason: "not_refundable" };
   }
 
   const buildStatements = (publicId: string) => [
@@ -479,8 +473,8 @@ export async function voidRecordedRefund(
 
   if (!applied) {
     const existing = await findByIdempotencyKey(db, idempotencyKey);
-    if (existing) return { ok: false, reason: 'duplicate', refund: existing };
-    return { ok: false, reason: 'not_refundable' };
+    if (existing) return { ok: false, reason: "duplicate", refund: existing };
+    return { ok: false, reason: "not_refundable" };
   }
 
   const refund = await findByIdempotencyKey(db, idempotencyKey);
@@ -501,7 +495,7 @@ export async function voidRecordedRefund(
 export function reversedRefundIds(history: Refund[]): Set<number> {
   return new Set(
     history
-      .filter((r) => r.kind === 'manual_reversal' && r.reverses_refund_id !== null)
+      .filter((r) => r.kind === "manual_reversal" && r.reverses_refund_id !== null)
       .map((r) => r.reverses_refund_id as number),
   );
 }
@@ -511,13 +505,13 @@ export async function getRefundByPublicId(
   db: D1Database,
   publicId: string,
 ): Promise<Refund | null> {
-  return db.prepare('SELECT * FROM refunds WHERE public_id = ?').bind(publicId).first<Refund>();
+  return db.prepare("SELECT * FROM refunds WHERE public_id = ?").bind(publicId).first<Refund>();
 }
 
 /** Refund history for an order, newest first. */
 export async function listRefunds(db: D1Database, orderId: number): Promise<Refund[]> {
   const { results } = await db
-    .prepare('SELECT * FROM refunds WHERE order_id = ? ORDER BY created_at DESC, id DESC')
+    .prepare("SELECT * FROM refunds WHERE order_id = ? ORDER BY created_at DESC, id DESC")
     .bind(orderId)
     .all<Refund>();
   return results ?? [];
@@ -568,7 +562,7 @@ export async function openReviewIfOverRefunded(
     .bind(orderId)
     .first<{ id: number }>();
   if (!over) return null;
-  const reason = 'exceeds_order_total';
+  const reason = "exceeds_order_total";
   await openRefundReview(db, orderId, reason);
   return reason;
 }
@@ -659,7 +653,7 @@ export async function dismissRefundEvent(
         WHERE provider_event_id = ? AND status = 'failed'
         RETURNING provider_event_id`,
     )
-    .bind(dismissedBy ? ` — dismissed by ${dismissedBy}` : ' — dismissed', eventId)
+    .bind(dismissedBy ? ` — dismissed by ${dismissedBy}` : " — dismissed", eventId)
     .first();
   return !!row;
 }

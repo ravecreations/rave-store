@@ -13,11 +13,11 @@
 /** Step names, in execution order, for a given flag combination. */
 export function deployPlan({ skipBuild = false, preflightOnly = false } = {}) {
   const steps = [];
-  if (!skipBuild) steps.push('build');
+  if (!skipBuild) steps.push("build");
   // The two gates run before ANY remote mutation, in every variant.
-  steps.push('validate-stamp', 'cache-config');
+  steps.push("validate-stamp", "cache-config");
   if (preflightOnly) return steps;
-  steps.push('migrate', 'deploy', 'purge-if-cross-version');
+  steps.push("migrate", "deploy", "purge-if-cross-version");
   return steps;
 }
 
@@ -29,8 +29,8 @@ export function validateStamp({ raw, expectedTheme, skipBuild = false }) {
   if (raw == null) {
     throw new Error(
       skipBuild
-        ? 'dist/ carries no theme stamp. Rebuild (omit --skip-build) so the artifact records which theme it contains.'
-        : 'The build finished but wrote no theme stamp — the theme-stamp integration is missing from astro.config.mjs.',
+        ? "dist/ carries no theme stamp. Rebuild (omit --skip-build) so the artifact records which theme it contains."
+        : "The build finished but wrote no theme stamp — the theme-stamp integration is missing from astro.config.mjs.",
     );
   }
   let stamped;
@@ -38,10 +38,10 @@ export function validateStamp({ raw, expectedTheme, skipBuild = false }) {
     stamped = JSON.parse(raw)?.theme;
   } catch {
     throw new Error(
-      'dist/theme.json is not valid JSON. Rebuild (omit --skip-build) to regenerate the stamp.',
+      "dist/theme.json is not valid JSON. Rebuild (omit --skip-build) to regenerate the stamp.",
     );
   }
-  if (typeof stamped !== 'string' || stamped.length === 0) {
+  if (typeof stamped !== "string" || stamped.length === 0) {
     throw new Error(
       'dist/theme.json has no "theme" string. Rebuild (omit --skip-build) to regenerate the stamp.',
     );
@@ -49,7 +49,7 @@ export function validateStamp({ raw, expectedTheme, skipBuild = false }) {
   if (stamped !== expectedTheme) {
     throw new Error(
       `dist/ was built for theme "${stamped}", but the current selection is "${expectedTheme}". ` +
-        'Rebuild (omit --skip-build), or change the selection back before deploying.',
+        "Rebuild (omit --skip-build), or change the selection back before deploying.",
     );
   }
   return stamped;
@@ -80,14 +80,14 @@ export async function executeDeployPlan({ skipBuild = false, preflightOnly = fal
   let cacheConfig;
   const handlers = {
     build: () => ops.build(),
-    'validate-stamp': () =>
+    "validate-stamp": () =>
       validateStamp({ raw: ops.readStamp(), expectedTheme: ops.expectedTheme, skipBuild }),
-    'cache-config': () => {
+    "cache-config": () => {
       cacheConfig = ops.loadCacheConfig();
     },
     migrate: () => ops.migrate(),
     deploy: () => ops.deploy(),
-    'purge-if-cross-version': async () => {
+    "purge-if-cross-version": async () => {
       if (cacheConfig?.crossVersion) await ops.purge(cacheConfig);
     },
   };

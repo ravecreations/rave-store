@@ -1,7 +1,7 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import type { SearchProvider, SearchResult } from './provider';
-import { countSearchProducts, searchProducts, suggestQuery } from '../products/search';
-import { normalizeSearchQuery } from './query';
+import type { D1Database } from "@cloudflare/workers-types";
+import type { SearchProvider, SearchResult } from "./provider";
+import { countSearchProducts, searchProducts, suggestQuery } from "../products/search";
+import { normalizeSearchQuery } from "./query";
 
 /**
  * Keyword search (SQLite FTS5) with typo-correction fallback — the default

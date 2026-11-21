@@ -1,5 +1,5 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import demoSql from '../../../seed-demo.sql?raw';
+import type { D1Database } from "@cloudflare/workers-types";
+import demoSql from "../../../seed-demo.sql?raw";
 
 /**
  * Optional demo catalog (30 products across 6 categories), offered as a checkbox
@@ -11,17 +11,17 @@ import demoSql from '../../../seed-demo.sql?raw';
 /** Split the static, comment-annotated seed file into executable statements. */
 function statements(sql: string): string[] {
   return sql
-    .split('\n')
-    .filter((line) => !line.trim().startsWith('--')) // drop comment lines
-    .join('\n')
-    .split(';') // every ';' in seed-demo.sql is a statement terminator
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--")) // drop comment lines
+    .join("\n")
+    .split(";") // every ';' in seed-demo.sql is a statement terminator
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 }
 
 /** True when there are no products yet — so seeding is a first-run-only offer. */
 export async function catalogIsEmpty(db: D1Database): Promise<boolean> {
-  const row = await db.prepare('SELECT COUNT(*) AS n FROM products').first<{ n: number }>();
+  const row = await db.prepare("SELECT COUNT(*) AS n FROM products").first<{ n: number }>();
   return (row?.n ?? 0) === 0;
 }
 

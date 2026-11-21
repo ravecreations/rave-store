@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 // .mjs for the same reason as the sibling script tests: tsconfig's `types` is
 // pinned to the Cloudflare types, so node builtins have no declarations here.
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from "node:fs";
 
 /**
  * `wrangler d1 migrations apply --remote` splits a migration file itself before
@@ -20,12 +20,12 @@ import { readdirSync, readFileSync } from 'node:fs';
  * `SELECT CASE WHEN EXISTS (…) THEN RAISE(ABORT, '…') END;`.
  */
 
-const MIGRATIONS = new URL('../../migrations/', import.meta.url);
+const MIGRATIONS = new URL("../../migrations/", import.meta.url);
 
-describe('migrations survive wrangler --remote', () => {
-  const files = readdirSync(MIGRATIONS).filter((name) => name.endsWith('.sql'));
+describe("migrations survive wrangler --remote", () => {
+  const files = readdirSync(MIGRATIONS).filter((name) => name.endsWith(".sql"));
 
-  it('has migrations to check', () => {
+  it("has migrations to check", () => {
     expect(files.length).toBeGreaterThan(0);
   });
 
@@ -34,17 +34,17 @@ describe('migrations survive wrangler --remote', () => {
   // mentions the close keyword truncates the trigger just as effectively as real
   // SQL would. An earlier draft of this test stripped comments and therefore
   // passed a migration that failed against the live database.
-  it.each(files)('%s has no early trigger close, in SQL or comments', (name) => {
-    const sql = readFileSync(new URL(name, MIGRATIONS), 'utf8');
+  it.each(files)("%s has no early trigger close, in SQL or comments", (name) => {
+    const sql = readFileSync(new URL(name, MIGRATIONS), "utf8");
     const triggers = sql.match(/CREATE TRIGGER[\s\S]*?\nEND;/gi) ?? [];
     for (const trigger of triggers) {
       // The body is everything between the opening BEGIN and the final END;.
-      const body = trigger.replace(/^[\s\S]*?\bBEGIN\b/i, '').replace(/\nEND;$/i, '');
+      const body = trigger.replace(/^[\s\S]*?\bBEGIN\b/i, "").replace(/\nEND;$/i, "");
       expect(
         body,
         `${name}: a trigger body closes early — wrangler's remote migration ` +
-          'splitter truncates there. Use SELECT RAISE(ABORT, …) WHERE EXISTS (…) ' +
-          'instead of CASE, and keep explanatory comments outside the body.',
+          "splitter truncates there. Use SELECT RAISE(ABORT, …) WHERE EXISTS (…) " +
+          "instead of CASE, and keep explanatory comments outside the body.",
       ).not.toMatch(/\bEND\s*;/i);
     }
   });

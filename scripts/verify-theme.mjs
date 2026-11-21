@@ -14,10 +14,10 @@
  * MCP, scaffold, Stripe country data) is theme-independent, and re-running it
  * per theme would triple the bill to re-prove the same thing.
  */
-import { spawnSync } from 'node:child_process';
-import { relative } from 'node:path';
-import { resolveTheme } from './themes.mjs';
-import { themeTsconfigPath, writeThemeArtifacts } from './theme-css.mjs';
+import { spawnSync } from "node:child_process";
+import { relative } from "node:path";
+import { resolveTheme } from "./themes.mjs";
+import { themeTsconfigPath, writeThemeArtifacts } from "./theme-css.mjs";
 
 writeThemeArtifacts();
 const { id, source } = resolveTheme();
@@ -25,13 +25,13 @@ const tsconfig = relative(process.cwd(), themeTsconfigPath(id));
 console.log(`verify:theme — ${id} (from ${source})`);
 
 const steps = [
-  ['npx', ['vitest', 'run', 'test/storefront']],
-  ['npx', ['astro', 'check', '--tsconfig', tsconfig]],
-  ['npx', ['astro', 'build']],
-  ['bun', ['scripts/check-built-css.mjs']],
+  ["npx", ["vitest", "run", "test/storefront"]],
+  ["npx", ["astro", "check", "--tsconfig", tsconfig]],
+  ["npx", ["astro", "build"]],
+  ["bun", ["scripts/check-built-css.mjs"]],
 ];
 
 for (const [cmd, args] of steps) {
-  const { status } = spawnSync(cmd, args, { stdio: 'inherit' });
+  const { status } = spawnSync(cmd, args, { stdio: "inherit" });
   if (status !== 0) process.exit(status ?? 1);
 }

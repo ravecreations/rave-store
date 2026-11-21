@@ -1,4 +1,4 @@
-import type { Product } from '../products/db';
+import type { Product } from "../products/db";
 
 /**
  * Search port. The storefront `/search` route depends on this, not on a concrete

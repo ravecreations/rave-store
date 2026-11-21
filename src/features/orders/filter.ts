@@ -9,13 +9,13 @@
 
 export interface OrderFilters {
   status: OrderStatusFilter | null;
-  fulfillment: 'fulfilled' | 'unfulfilled' | null;
+  fulfillment: "fulfilled" | "unfulfilled" | null;
   method: string | null;
   /** Only orders still needing refund reconciliation. */
   review: boolean;
 }
 
-export type OrderStatusFilter = 'paid' | 'partially_refunded' | 'refunded' | 'pending';
+export type OrderStatusFilter = "paid" | "partially_refunded" | "refunded" | "pending";
 
 /**
  * Payment states, as a merchant thinks of them.
@@ -28,38 +28,37 @@ export type OrderStatusFilter = 'paid' | 'partially_refunded' | 'refunded' | 'pe
  */
 const STATUS: Record<OrderStatusFilter, string> = {
   paid: "status = 'paid' AND refunded_cents = 0",
-  partially_refunded: 'refunded_cents > 0 AND refunded_cents < amount_total_cents',
-  refunded: 'refunded_cents > 0 AND refunded_cents >= amount_total_cents',
+  partially_refunded: "refunded_cents > 0 AND refunded_cents < amount_total_cents",
+  refunded: "refunded_cents > 0 AND refunded_cents >= amount_total_cents",
   pending: "status = 'pending'",
 };
 
 export const ORDER_STATUS_OPTIONS: { value: OrderStatusFilter; label: string }[] = [
-  { value: 'paid', label: 'Paid' },
-  { value: 'partially_refunded', label: 'Partially refunded' },
-  { value: 'refunded', label: 'Refunded' },
-  { value: 'pending', label: 'Unpaid' },
+  { value: "paid", label: "Paid" },
+  { value: "partially_refunded", label: "Partially refunded" },
+  { value: "refunded", label: "Refunded" },
+  { value: "pending", label: "Unpaid" },
 ];
 
 export const ORDER_METHOD_OPTIONS: { value: string; label: string }[] = [
-  { value: 'stripe', label: 'Card (Stripe)' },
-  { value: 'lightning', label: 'Lightning' },
-  { value: 'opennode', label: 'Bitcoin (OpenNode)' },
-  { value: 'demo', label: 'Demo' },
+  { value: "stripe", label: "Card (Stripe)" },
+  { value: "lightning", label: "Lightning" },
+  { value: "opennode", label: "Bitcoin (OpenNode)" },
+  { value: "demo", label: "Demo" },
 ];
 
 const isStatus = (v: string | null): v is OrderStatusFilter =>
   v !== null && Object.prototype.hasOwnProperty.call(STATUS, v);
 
 export function parseOrderFilters(params: URLSearchParams): OrderFilters {
-  const status = params.get('status');
-  const fulfillment = params.get('fulfillment');
-  const method = params.get('method');
+  const status = params.get("status");
+  const fulfillment = params.get("fulfillment");
+  const method = params.get("method");
   return {
     status: isStatus(status) ? status : null,
-    fulfillment:
-      fulfillment === 'fulfilled' || fulfillment === 'unfulfilled' ? fulfillment : null,
+    fulfillment: fulfillment === "fulfilled" || fulfillment === "unfulfilled" ? fulfillment : null,
     method: ORDER_METHOD_OPTIONS.some((o) => o.value === method) ? method : null,
-    review: params.get('review') === '1',
+    review: params.get("review") === "1",
   };
 }
 
@@ -74,7 +73,7 @@ export function orderFilterParams(f: OrderFilters): Record<string, string | unde
     status: f.status ?? undefined,
     fulfillment: f.fulfillment ?? undefined,
     method: f.method ?? undefined,
-    review: f.review ? '1' : undefined,
+    review: f.review ? "1" : undefined,
   };
 }
 
@@ -88,19 +87,23 @@ export function orderFilterClause(f: OrderFilters): { where: string; params: str
 
   if (f.status) parts.push(`(${STATUS[f.status]})`);
   if (f.fulfillment) {
-    parts.push('fulfillment_status = ?');
+    parts.push("fulfillment_status = ?");
     params.push(f.fulfillment);
   }
   if (f.method) {
     // NULL payment_method predates the column and was Stripe-only, so a Stripe
     // filter that ignored those would hide real card orders.
-    parts.push(f.method === 'stripe' ? '(payment_method = ? OR payment_method IS NULL)' : 'payment_method = ?');
+    parts.push(
+      f.method === "stripe"
+        ? "(payment_method = ? OR payment_method IS NULL)"
+        : "payment_method = ?",
+    );
     params.push(f.method);
   }
-  if (f.review) parts.push('refund_review_reason IS NOT NULL AND refund_reviewed_at IS NULL');
+  if (f.review) parts.push("refund_review_reason IS NOT NULL AND refund_reviewed_at IS NULL");
 
   return {
-    where: parts.length ? `WHERE ${parts.join(' AND ')}` : '',
+    where: parts.length ? `WHERE ${parts.join(" AND ")}` : "",
     params,
   };
 }

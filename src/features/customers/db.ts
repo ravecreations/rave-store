@@ -1,5 +1,5 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import type { Order } from '../orders/db';
+import type { D1Database } from "@cloudflare/workers-types";
+import type { Order } from "../orders/db";
 
 /**
  * Customers are not a stored entity — minshop is guest-checkout. This is a
@@ -16,7 +16,7 @@ export interface CustomerSummary {
 /** Distinct customers (by email) with order count, lifetime value, last order. */
 export async function listCustomers(
   db: D1Database,
-  orderBy = 'lifetime_cents DESC',
+  orderBy = "lifetime_cents DESC",
   limit = 50,
   offset = 0,
 ): Promise<CustomerSummary[]> {
@@ -74,7 +74,7 @@ export async function getCustomerOrders(
   offset = 0,
 ): Promise<Order[]> {
   const { results } = await db
-    .prepare('SELECT * FROM orders WHERE email = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+    .prepare("SELECT * FROM orders WHERE email = ? ORDER BY created_at DESC LIMIT ? OFFSET ?")
     .bind(email, limit, offset)
     .all<Order>();
   return results ?? [];

@@ -1,10 +1,10 @@
-import { env } from 'cloudflare:workers';
-import type { AstroCookies } from 'astro';
-import { getConfig } from '../../config';
-import { getSetting } from '../settings/db';
-import { getEmailProvider } from '../email';
-import { loginLinkEmail } from '../email/loginLink';
-import { signToken, verifyToken } from './token';
+import { env } from "cloudflare:workers";
+import type { AstroCookies } from "astro";
+import { getConfig } from "../../config";
+import { getSetting } from "../settings/db";
+import { getEmailProvider } from "../email";
+import { loginLinkEmail } from "../email/loginLink";
+import { signToken, verifyToken } from "./token";
 
 /**
  * Passwordless customer auth (magic-link). Default adapter for the storefront
@@ -15,7 +15,7 @@ import { signToken, verifyToken } from './token';
  */
 const MAGIC_TTL = 15 * 60; // login link valid 15 min
 const SESSION_TTL = 30 * 24 * 3600; // session cookie valid 30 days
-const COOKIE = 'customer_session';
+const COOKIE = "customer_session";
 const magicKey = (secret: string) => `customer-magic:v1:${secret}`;
 const sessionKey = (secret: string) => `customer-session:v1:${secret}`;
 
@@ -28,8 +28,8 @@ const normalize = (email: string) => email.trim().toLowerCase();
  * falling back to the build-time `features.accounts` default when unset.
  */
 export async function accountsEnabled(): Promise<boolean> {
-  const override = await getSetting(env.DB, 'accounts_enabled');
-  const on = override == null ? getConfig().features.accounts : override === '1';
+  const override = await getSetting(env.DB, "accounts_enabled");
+  const on = override == null ? getConfig().features.accounts : override === "1";
   if (!on || !env.AUTH_SECRET) return false;
   return (await getEmailProvider()) !== null;
 }
@@ -48,7 +48,12 @@ export async function requestLogin(email: string, origin: string): Promise<void>
   const secret = env.AUTH_SECRET;
   if (!secret) return;
   const addr = normalize(email);
-  const token = await signToken(`${crypto.randomUUID()}:${addr}`, magicKey(secret), MAGIC_TTL, now());
+  const token = await signToken(
+    `${crypto.randomUUID()}:${addr}`,
+    magicKey(secret),
+    MAGIC_TTL,
+    now(),
+  );
   const link = `${origin}/account/verify?token=${encodeURIComponent(token)}`;
 
   if (import.meta.env.DEV) console.log(`[magic-link] ${addr} → ${link}`);
@@ -56,10 +61,10 @@ export async function requestLogin(email: string, origin: string): Promise<void>
   const emailer = await getEmailProvider();
   if (emailer) {
     try {
-      const storeName = (await getSetting(env.DB, 'store_name')) || getConfig().storeName;
+      const storeName = (await getSetting(env.DB, "store_name")) || getConfig().storeName;
       await emailer.send(loginLinkEmail(addr, link, storeName));
     } catch (err) {
-      console.error('Login email failed:', err);
+      console.error("Login email failed:", err);
     }
   }
 }
@@ -70,16 +75,16 @@ export async function redeemLoginToken(token: string | null): Promise<string | n
   if (!secret) return null;
   const timestamp = Math.floor(now());
   const payload = await verifyToken(token, magicKey(secret), timestamp);
-  const separator = payload?.indexOf(':') ?? -1;
+  const separator = payload?.indexOf(":") ?? -1;
   if (!payload || separator < 1) return null;
   const nonce = payload.slice(0, separator);
   const email = payload.slice(separator + 1);
 
   // Retain each redemption for at least the maximum remaining life of its link.
   const [, redemption] = await env.DB.batch([
-    env.DB.prepare('DELETE FROM customer_login_redemptions WHERE expires_at <= ?').bind(timestamp),
+    env.DB.prepare("DELETE FROM customer_login_redemptions WHERE expires_at <= ?").bind(timestamp),
     env.DB.prepare(
-      'INSERT INTO customer_login_redemptions (nonce, expires_at) VALUES (?, ?) ON CONFLICT(nonce) DO NOTHING',
+      "INSERT INTO customer_login_redemptions (nonce, expires_at) VALUES (?, ?) ON CONFLICT(nonce) DO NOTHING",
     ).bind(nonce, timestamp + MAGIC_TTL),
   ]);
   return redemption.meta.changes === 1 ? email : null;
@@ -97,14 +102,14 @@ export async function setCustomerSession(
   cookies.set(COOKIE, token, {
     httpOnly: true,
     secure,
-    sameSite: 'lax',
-    path: '/',
+    sameSite: "lax",
+    path: "/",
     maxAge: SESSION_TTL,
   });
 }
 
 export function clearCustomerSession(cookies: AstroCookies): void {
-  cookies.delete(COOKIE, { path: '/' });
+  cookies.delete(COOKIE, { path: "/" });
 }
 
 /** The logged-in customer's email (verified session cookie), or null. */

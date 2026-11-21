@@ -6,15 +6,15 @@
  * resolution, per-isolate memoization, and the fail-closed log.
  */
 
-import { getConfig } from '../../config';
-import type { StoreSettings } from '../settings/db';
+import { getConfig } from "../../config";
+import type { StoreSettings } from "../settings/db";
 import {
   effectiveShippingConfig,
   validateBuildTimeShipping,
   type EffectiveShipping,
   type ParsedRuntimeShippingConfig,
-} from './settings';
-import type { ShippingConfig } from './calculator';
+} from "./settings";
+import type { ShippingConfig } from "./calculator";
 
 /** `store.config.ts` cannot change while the isolate lives, so validate it once
  *  rather than re-walking every zone on every request. */
@@ -33,9 +33,7 @@ function logIssue(source: string, reason: string) {
   const key = `${source}:${reason}`;
   if (loggedIssues.has(key)) return;
   loggedIssues.add(key);
-  console.error(
-    JSON.stringify({ event: 'shipping_config_invalid', source, reason }),
-  );
+  console.error(JSON.stringify({ event: "shipping_config_invalid", source, reason }));
 }
 
 /**
@@ -47,17 +45,17 @@ function logIssue(source: string, reason: string) {
  */
 export function shippingFor(settings: StoreSettings | null | undefined): EffectiveShipping {
   const buildTime = getConfig().shipping;
-  const parsed: ParsedRuntimeShippingConfig = settings?.shippingConfig ?? { status: 'absent' };
+  const parsed: ParsedRuntimeShippingConfig = settings?.shippingConfig ?? { status: "absent" };
 
   // Memoized build-time verdict, so the resolver does not re-validate per request.
-  if (parsed.status === 'absent') {
+  if (parsed.status === "absent") {
     const invalid = buildTimeIssue(buildTime);
     if (invalid) {
-      logIssue('build-time', invalid);
+      logIssue("build-time", invalid);
       return {
         config: { enabled: true, zones: [] },
-        source: 'build-time',
-        issue: { source: 'build-time', reason: invalid },
+        source: "build-time",
+        issue: { source: "build-time", reason: invalid },
       };
     }
   }

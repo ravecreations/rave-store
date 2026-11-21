@@ -11,12 +11,12 @@
  * THEME variable changes which theme THIS process selects (reported below),
  * never what gets written.
  */
-import { resolveTheme } from './themes.mjs';
-import { writeThemeArtifacts } from './theme-css.mjs';
+import { resolveTheme } from "./themes.mjs";
+import { writeThemeArtifacts } from "./theme-css.mjs";
 
 const { ids, configured } = writeThemeArtifacts();
 const active = resolveTheme();
 console.log(
-  `themes: ${ids.join(', ')} — active for this process: ${active.id} (from ${active.source})` +
-    (active.id === configured.id ? '' : `; editor/shared tsconfig stays on ${configured.id}`),
+  `themes: ${ids.join(", ")} — active for this process: ${active.id} (from ${active.source})` +
+    (active.id === configured.id ? "" : `; editor/shared tsconfig stays on ${configured.id}`),
 );

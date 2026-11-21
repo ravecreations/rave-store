@@ -8,17 +8,17 @@ theme engine and no code editor in Admin — you edit source, build, and deploy.
 
 ## What you own
 
-| File | What it controls |
-| --- | --- |
-| `src/themes/<your-theme>/` | Your theme — templates and tokens. Created for you at setup. |
-| `src/styles/overrides.css` | Optional overrides applied after your theme's tokens. |
-| `src/themes/<your-theme>/Header.astro` | Logo, announcement bar, navigation, search, cart and account placement. |
-| `src/themes/<your-theme>/Footer.astro` | Footer navigation and store attribution. |
-| `src/themes/<your-theme>/ProductCard.astro` | Every product card — catalog, category, search, and the "You may also like" row. |
-| `src/themes/<your-theme>/Catalog.astro` | The catalog page at both `/` and `/products`: headings, category links, grid, empty state. |
-| `src/themes/<your-theme>/ProductDetail.astro` | The product page: gallery, details, purchase panel, and recommendations. |
-| `src/themes/<your-theme>/ContentPage.astro` | The frame around a merchant's Markdown page. |
-| `src/themes/<your-theme>/tokens.css` | Your theme's design tokens: the `@theme` block (colors, fonts, radii) plus the prose and container scales. |
+| File                                          | What it controls                                                                                           |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `src/themes/<your-theme>/`                    | Your theme — templates and tokens. Created for you at setup.                                               |
+| `src/styles/overrides.css`                    | Optional overrides applied after your theme's tokens.                                                      |
+| `src/themes/<your-theme>/Header.astro`        | Logo, announcement bar, navigation, search, cart and account placement.                                    |
+| `src/themes/<your-theme>/Footer.astro`        | Footer navigation and store attribution.                                                                   |
+| `src/themes/<your-theme>/ProductCard.astro`   | Every product card — catalog, category, search, and the "You may also like" row.                           |
+| `src/themes/<your-theme>/Catalog.astro`       | The catalog page at both `/` and `/products`: headings, category links, grid, empty state.                 |
+| `src/themes/<your-theme>/ProductDetail.astro` | The product page: gallery, details, purchase panel, and recommendations.                                   |
+| `src/themes/<your-theme>/ContentPage.astro`   | The frame around a merchant's Markdown page.                                                               |
+| `src/themes/<your-theme>/tokens.css`          | Your theme's design tokens: the `@theme` block (colors, fonts, radii) plus the prose and container scales. |
 
 That is the whole store-owned surface.
 
@@ -46,12 +46,12 @@ Your card receives a `ProductCardModel`:
 
 ```ts
 interface ProductCardModel {
-  id: string;              // prod_ public ID — never a database row ID
+  id: string; // prod_ public ID — never a database row ID
   name: string;
-  href: string;            // root-relative product URL
-  image: StorefrontImage;  // already resolved: src, srcset, sizes, alt, priority
-  formattedPrice: string;  // already formatted in the store's currency
-  inStock: boolean;        // availability only — never a quantity
+  href: string; // root-relative product URL
+  image: StorefrontImage; // already resolved: src, srcset, sizes, alt, priority
+  formattedPrice: string; // already formatted in the store's currency
+  inStock: boolean; // availability only — never a quantity
 }
 ```
 
@@ -102,12 +102,12 @@ that are actually publishable, so you cannot render a dead link.
 
 Four controls carry behavior your template must not reimplement:
 
-| Control | What it owns |
-| --- | --- |
-| `<StoreNav>` | Inline links plus the mobile `<details>` disclosure, which works with no JavaScript. |
-| `<StoreSearch>` | GET method, the `q` field, the search landmark, the accessible label. |
-| `<StoreCartControl>` | The `data-cart-open` and `data-cart-count-label` hooks the drawer script depends on. |
-| `<StoreAccountControl>` | The account destination, which middleware guards. |
+| Control                 | What it owns                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `<StoreNav>`            | Inline links plus the mobile `<details>` disclosure, which works with no JavaScript. |
+| `<StoreSearch>`         | GET method, the `q` field, the search landmark, the accessible label.                |
+| `<StoreCartControl>`    | The `data-cart-open` and `data-cart-count-label` hooks the drawer script depends on. |
+| `<StoreAccountControl>` | The account destination, which middleware guards.                                    |
 
 Each takes a `class` for placement and styling. Reimplementing one is the one
 change most likely to break something silently: the cart drawer script fails
@@ -126,10 +126,10 @@ validated everything, and tagged the response for cache invalidation.
 
 Two controls to keep:
 
-| Control | What it owns |
-| --- | --- |
-| `<CatalogSort>` | Sort links whose hrefs encode the direction flip and deliberately drop `page`. |
-| `<CatalogPagination>` | The pagination landmark, `aria-current="page"`, and `rel=prev`/`rel=next`. |
+| Control               | What it owns                                                                   |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `<CatalogSort>`       | Sort links whose hrefs encode the direction flip and deliberately drop `page`. |
+| `<CatalogPagination>` | The pagination landmark, `aria-current="page"`, and `rel=prev`/`rel=next`.     |
 
 Those URLs are not cosmetic: they decide which pages exist, which one is
 canonical, and how many cache entries the catalog occupies. Restyle the controls
@@ -151,9 +151,9 @@ rail can actually take money.
 The route keeps the 404, the page metadata, and the JSON-LD. Those are not
 presentation, and getting them subtly wrong is invisible on the page.
 
-| Control | What it owns |
-| --- | --- |
-| `<ProductGallery>` | Frame anchors the variant selector scrolls to, and LCP treatment on the first frame only. |
+| Control                 | What it owns                                                                                                                |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `<ProductGallery>`      | Frame anchors the variant selector scrolls to, and LCP treatment on the first frame only.                                   |
 | `<ProductPurchaseForm>` | Form actions and methods, `product_id`/`variant_id`/`extra` field names, sold-out and required states, and `data-fullpage`. |
 
 `data-fullpage` deserves a specific warning. The shell's cart script intercepts
@@ -209,9 +209,9 @@ The width and padding of the page are yours, via tokens the layout reads:
 
 ```css
 :root {
-  --page-max:   72rem;    /* content column width */
-  --page-pad-x: 1.5rem;   /* horizontal padding */
-  --page-pad-y: 3rem;     /* vertical padding */
+  --page-max: 72rem; /* content column width */
+  --page-pad-x: 1.5rem; /* horizontal padding */
+  --page-pad-y: 3rem; /* vertical padding */
 }
 ```
 
@@ -228,11 +228,11 @@ A few attributes are contract rather than styling. Reword and restyle what is
 inside them; keep the marker. Each exists because the state it names would
 otherwise be indistinguishable to an automated check — or to a screen reader.
 
-| Marker | Where | Why |
-| --- | --- | --- |
-| `role="status"` | Catalog empty state | An empty catalog must announce itself, not render a blank grid. |
-| `data-low-stock` | Product page scarcity note | Keeps scarcity distinguishable from normal availability without publishing a count. |
-| `class="markdown-content"` | Content page | The hook every prose style is scoped to. |
+| Marker                     | Where                      | Why                                                                                 |
+| -------------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
+| `role="status"`            | Catalog empty state        | An empty catalog must announce itself, not render a blank grid.                     |
+| `data-low-stock`           | Product page scarcity note | Keeps scarcity distinguishable from normal availability without publishing a count. |
+| `class="markdown-content"` | Content page               | The hook every prose style is scoped to.                                            |
 
 ## Two conventions the contract tests enforce
 
@@ -329,7 +329,7 @@ mobile and desktop widths. Try a long product name, a sold-out item, and an
 empty search — those are where card layouts break.
 
 `bun run test:storefront-equivalence` is a different tool: it asserts your HTML
-matches the *default* design byte-for-byte. It exists for upstream extraction
+matches the _default_ design byte-for-byte. It exists for upstream extraction
 work. If you have customized anything, it is supposed to fail, and it is not
 part of `bun run verify`.
 

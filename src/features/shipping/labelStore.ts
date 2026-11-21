@@ -15,9 +15,9 @@
  *   the mutable active row can be reused or removed.
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database } from "@cloudflare/workers-types";
 
-export type LabelStatus = 'quoted' | 'purchasing' | 'purchased' | 'failed' | 'uncertain';
+export type LabelStatus = "quoted" | "purchasing" | "purchased" | "failed" | "uncertain";
 
 /**
  * How long a 'purchasing' row is presumed to have a live request behind it.
@@ -30,9 +30,9 @@ export const PURCHASE_LEASE_SECONDS = 120;
 
 /** A purchasing row whose lease has expired — probably crashed, POSSIBLY still
  *  completing. Reconcile against the provider; never assume. */
-export function isPurchaseStale(record: Pick<LabelRecord, 'status' | 'updated_at'>): boolean {
-  if (record.status !== 'purchasing') return false;
-  const updated = Date.parse(`${record.updated_at.replace(' ', 'T')}Z`);
+export function isPurchaseStale(record: Pick<LabelRecord, "status" | "updated_at">): boolean {
+  if (record.status !== "purchasing") return false;
+  const updated = Date.parse(`${record.updated_at.replace(" ", "T")}Z`);
   return !Number.isFinite(updated) || Date.now() - updated >= PURCHASE_LEASE_SECONDS * 1000;
 }
 
@@ -52,7 +52,7 @@ export interface LabelRecord {
   updated_at: string;
 }
 
-export type LabelAttemptOutcome = 'purchased' | 'refunded' | 'failed' | 'force_discarded';
+export type LabelAttemptOutcome = "purchased" | "refunded" | "failed" | "force_discarded";
 
 export interface LabelAttemptRecord {
   id: number;
@@ -81,7 +81,7 @@ const ORDER_ELIGIBLE = `EXISTS (
 
 export async function getLabelRecord(db: D1Database, orderId: number): Promise<LabelRecord | null> {
   return db
-    .prepare('SELECT * FROM shipping_labels WHERE order_id = ?')
+    .prepare("SELECT * FROM shipping_labels WHERE order_id = ?")
     .bind(orderId)
     .first<LabelRecord>();
 }
@@ -201,7 +201,16 @@ export async function recordPurchased(
                 updated_at = datetime('now')
           WHERE order_id = ?1 AND status IN ('purchasing', 'uncertain') AND claim_token = ?8`,
       )
-      .bind(orderId, p.transactionId, p.provider, p.service, p.amountCents, p.trackingNumber, p.labelUrl, claimToken),
+      .bind(
+        orderId,
+        p.transactionId,
+        p.provider,
+        p.service,
+        p.amountCents,
+        p.trackingNumber,
+        p.labelUrl,
+        claimToken,
+      ),
     // The active row is mutable; this append-only copy is the durable money
     // trail and survives replacement quotes and later label purchases.
     db
@@ -362,7 +371,16 @@ export async function recordRefundedAttempt(
                 updated_at = datetime('now')
           WHERE order_id = ?1 AND status IN ('purchasing', 'uncertain') AND claim_token = ?8`,
       )
-      .bind(orderId, p.transactionId, p.provider, p.service, p.amountCents, p.trackingNumber, p.labelUrl, claimToken),
+      .bind(
+        orderId,
+        p.transactionId,
+        p.provider,
+        p.service,
+        p.amountCents,
+        p.trackingNumber,
+        p.labelUrl,
+        claimToken,
+      ),
     db
       .prepare(
         `INSERT OR IGNORE INTO shipping_label_attempts (

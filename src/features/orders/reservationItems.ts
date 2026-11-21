@@ -1,6 +1,6 @@
-import type { Product } from '../products/db.ts';
-import type { ReservationItem } from './reservations.ts';
-import { entitlementWriterActive } from '../digitalDelivery/rollout.ts';
+import type { Product } from "../products/db.ts";
+import type { ReservationItem } from "./reservations.ts";
+import { entitlementWriterActive } from "../digitalDelivery/rollout.ts";
 
 /**
  * A priced checkout line, before it becomes a reservation snapshot.

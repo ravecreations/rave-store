@@ -1,5 +1,5 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import { slugify } from '../products/slug';
+import type { D1Database } from "@cloudflare/workers-types";
+import { slugify } from "../products/slug";
 
 /**
  * Page slugs live under /pages/, their own namespace, so they cannot collide
@@ -10,7 +10,7 @@ import { slugify } from '../products/slug';
 /** Slugify, but fall back to `page` rather than the product helper's `product`. */
 export function pageSlugify(input: string): string {
   const slug = slugify(input);
-  return slug === 'product' && !/product/i.test(input) ? 'page' : slug;
+  return slug === "product" && !/product/i.test(input) ? "page" : slug;
 }
 
 /**
@@ -27,7 +27,7 @@ export async function uniquePageSlug(
   let n = 1;
   while (true) {
     const row = await db
-      .prepare(`SELECT id FROM pages WHERE slug = ?${excludeId ? ' AND id != ?' : ''} LIMIT 1`)
+      .prepare(`SELECT id FROM pages WHERE slug = ?${excludeId ? " AND id != ?" : ""} LIMIT 1`)
       .bind(...(excludeId ? [candidate, excludeId] : [candidate]))
       .first<{ id: number }>();
     if (!row) return candidate;

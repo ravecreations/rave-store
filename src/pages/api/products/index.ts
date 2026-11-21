@@ -1,14 +1,14 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { listProducts, countProducts } from '../../../features/products/db';
-import { categoriesForProducts } from '../../../features/categories/db';
-import { getSearchProvider } from '../../../features/search';
-import { toCatalogProduct } from '../../../features/catalog/serialize';
-import { catalogJson, catalogPreflight } from '../../../features/catalog/http';
-import { parseCatalogListQuery } from '../../../features/catalog/query';
-import { getConfig } from '../../../config';
-import { publicOrigin } from '../../../features/http/origin';
-import { addCacheTags, productCacheTags } from '../../../features/cache/tags';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
+import { listProducts, countProducts } from "../../../features/products/db";
+import { categoriesForProducts } from "../../../features/categories/db";
+import { getSearchProvider } from "../../../features/search";
+import { toCatalogProduct } from "../../../features/catalog/serialize";
+import { catalogJson, catalogPreflight } from "../../../features/catalog/http";
+import { parseCatalogListQuery } from "../../../features/catalog/query";
+import { getConfig } from "../../../config";
+import { publicOrigin } from "../../../features/http/origin";
+import { addCacheTags, productCacheTags } from "../../../features/cache/tags";
 
 export const prerender = false;
 

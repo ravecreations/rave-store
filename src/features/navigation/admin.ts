@@ -1,5 +1,5 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import type { MenuItem, MenuLocation, MenuTargetType } from './db.ts';
+import type { D1Database } from "@cloudflare/workers-types";
+import type { MenuItem, MenuLocation, MenuTargetType } from "./db.ts";
 
 /**
  * How many options a picker offers before the merchant has to search.
@@ -49,9 +49,9 @@ export async function targetChoices(
   query: string,
 ): Promise<TargetChoices> {
   const sources: Partial<Record<MenuTargetType, { table: string; name: string; where: string }>> = {
-    page: { table: 'pages', name: 'title', where: 'published = 1' },
-    product: { table: 'products', name: 'name', where: 'active = 1' },
-    category: { table: 'categories', name: 'name', where: '1 = 1' },
+    page: { table: "pages", name: "title", where: "published = 1" },
+    product: { table: "products", name: "name", where: "active = 1" },
+    category: { table: "categories", name: "name", where: "1 = 1" },
   };
   const source = sources[targetType];
   if (!source) return { options: [], remaining: 0 };
@@ -59,7 +59,7 @@ export async function targetChoices(
   const q = query.trim();
   // LIKE with a short, merchant-supplied pattern only. D1 rejects long patterns
   // outright ("LIKE or GLOB pattern too complex"), so the search term is bounded.
-  const filter = q ? `AND ${source.name} LIKE ?1` : '';
+  const filter = q ? `AND ${source.name} LIKE ?1` : "";
   const pattern = `%${q.slice(0, 60)}%`;
 
   const listSql = `SELECT id, public_id, ${source.name} AS name FROM ${source.table}
@@ -91,16 +91,16 @@ export function unavailableReason(item: MenuItem): string | null {
   // targetExists, not an empty label: a custom label outlives its target, so a
   // deleted page labelled "Company" still renders text and would otherwise be
   // reported as a draft — sending the merchant to un-draft a page that is gone.
-  if (!item.targetExists) return 'Target no longer exists';
+  if (!item.targetExists) return "Target no longer exists";
   switch (item.targetType) {
-    case 'page':
-      return 'Draft — hidden on the storefront';
-    case 'product':
-      return 'Inactive — hidden on the storefront';
-    case 'category':
-      return 'Target no longer exists';
+    case "page":
+      return "Draft — hidden on the storefront";
+    case "product":
+      return "Inactive — hidden on the storefront";
+    case "category":
+      return "Target no longer exists";
     default:
-      return 'Unavailable';
+      return "Unavailable";
   }
 }
 
@@ -127,7 +127,7 @@ export async function menuReferencesFor(
   const CHUNK = 90; // under D1's 100-parameter ceiling, with room for target_type
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
-    const placeholders = chunk.map(() => '?').join(', ');
+    const placeholders = chunk.map(() => "?").join(", ");
     const { results } = await db
       .prepare(
         `SELECT DISTINCT target_id, location FROM menu_items
@@ -145,9 +145,9 @@ export async function menuReferencesFor(
 }
 
 export const TARGET_TYPE_LABELS: Record<MenuTargetType, string> = {
-  home: 'Home',
-  catalog: 'Catalog',
-  page: 'Page',
-  product: 'Product',
-  category: 'Category',
+  home: "Home",
+  catalog: "Catalog",
+  page: "Page",
+  product: "Product",
+  category: "Category",
 };

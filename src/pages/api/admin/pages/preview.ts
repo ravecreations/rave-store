@@ -1,10 +1,7 @@
-import type { APIRoute } from 'astro';
-import { getConfig } from '../../../../config';
-import { renderMarkdown } from '../../../../features/pages/markdown';
-import {
-  normalizePageLayout,
-  pageLayoutStyle,
-} from '../../../../features/pages/layouts';
+import type { APIRoute } from "astro";
+import { getConfig } from "../../../../config";
+import { renderMarkdown } from "../../../../features/pages/markdown";
+import { normalizePageLayout, pageLayoutStyle } from "../../../../features/pages/layouts";
 
 export const prerender = false;
 
@@ -24,7 +21,7 @@ const MAX_BODY = 100_000; // same bound the page form enforces
  */
 export const POST: APIRoute = async ({ request }) => {
   const form = await request.formData();
-  const markdown = String(form.get('body_markdown') ?? '').slice(0, MAX_BODY);
+  const markdown = String(form.get("body_markdown") ?? "").slice(0, MAX_BODY);
   // sourceMap is admin-only: it stamps data-source-line so a click in the
   // preview can jump to the matching line in the editor.
   const html = renderMarkdown(markdown, {
@@ -35,15 +32,15 @@ export const POST: APIRoute = async ({ request }) => {
   // the chosen layout rather than always rendering at the default measure.
   // The page title is deliberately NOT included: it is a form field right above
   // the editor, so repeating it in the preview is noise rather than parity.
-  const layout = normalizePageLayout(form.get('layout'));
+  const layout = normalizePageLayout(form.get("layout"));
   const wrapped =
     `<div class="markdown-content" data-page-layout="${layout}" ` +
     `style="${pageLayoutStyle(layout)}">${html}</div>`;
 
   return new Response(wrapped, {
     headers: {
-      'content-type': 'text/html; charset=utf-8',
-      'cache-control': 'private, no-store',
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "private, no-store",
     },
   });
 };

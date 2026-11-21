@@ -1,6 +1,6 @@
-import { env } from 'cloudflare:workers';
-import { storeOverrides } from './store.config';
-import type { ShippingConfig } from './features/shipping/calculator';
+import { env } from "cloudflare:workers";
+import { storeOverrides } from "./store.config";
+import type { ShippingConfig } from "./features/shipping/calculator";
 
 /**
  * Site-wide settings SCHEMA + DEFAULTS. This file is upstream-owned: to change
@@ -104,7 +104,7 @@ export interface SiteConfig {
    * (bge-base-en-v1.5 = 768). `topK` caps semantic results.
    */
   search: {
-    provider: 'fts' | 'vector';
+    provider: "fts" | "vector";
     embeddingModel: string;
     topK: number;
   };
@@ -120,10 +120,10 @@ export interface SiteConfig {
    * Stripe Tax, and promo codes are Stripe-Checkout features and are skipped.
    */
   payments: {
-    provider: 'stripe' | 'lightning' | 'opennode';
+    provider: "stripe" | "lightning" | "opennode";
     lightning: {
       /** Which self-hosted node mints invoices when provider is 'lightning'. */
-      backend: 'phoenixd' | 'lnbits';
+      backend: "phoenixd" | "lnbits";
       /** Minutes a Lightning invoice (and its /pay page) stays valid. */
       invoiceExpiryMinutes: number;
       /**
@@ -146,7 +146,7 @@ export interface SiteConfig {
    */
   email: {
     enabled: boolean;
-    provider: 'resend' | 'cloudflare';
+    provider: "resend" | "cloudflare";
     from: string;
     fromName: string;
     /** Store-owner address for a "new order" notification ('' = don't notify). */
@@ -166,7 +166,7 @@ export type DeepPartial<T> = T extends readonly unknown[]
     : T;
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
+  return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
 /**
@@ -187,16 +187,16 @@ function deepMerge<T>(base: T, override: DeepPartial<T>): T {
 /** Upstream defaults. Don't edit these per-store — override in `store.config.ts`. */
 function defaultConfig(): SiteConfig {
   return {
-    storeName: env.STORE_NAME ?? 'My Shop',
-    currency: 'usd', // store-wide currency (ISO 4217, lowercase)
-    timeZone: env.TIME_ZONE ?? 'UTC', // setup/admin settings can override this at runtime
+    storeName: env.STORE_NAME ?? "My Shop",
+    currency: "usd", // store-wide currency (ISO 4217, lowercase)
+    timeZone: env.TIME_ZONE ?? "UTC", // setup/admin settings can override this at runtime
     features: {
       accounts: false, // magic-link customer login; needs AUTH_SECRET + email
     },
     images: {
       optimizeOnUpload: false, // set true after enabling Transformations (free ≤5k/mo)
       maxWidth: 1000,
-      baseUrl: (env.IMAGE_BASE_URL ?? '').replace(/\/+$/, ''),
+      baseUrl: (env.IMAGE_BASE_URL ?? "").replace(/\/+$/, ""),
     },
     orderNumber: {
       offset: 1000, // first order shows as #1000
@@ -207,10 +207,10 @@ function defaultConfig(): SiteConfig {
       enabled: true,
       zones: [
         {
-          countries: ['US'],
+          countries: ["US"],
           rates: [
-            { label: 'Standard', amountCents: 500 },
-            { label: 'Express', amountCents: 1500 },
+            { label: "Standard", amountCents: 500 },
+            { label: "Express", amountCents: 1500 },
           ],
           freeOverCents: 5000, // free shipping at $50+ (null to disable)
         },
@@ -231,27 +231,27 @@ function defaultConfig(): SiteConfig {
     },
     search: {
       // 'fts' (default, $0/local) | 'vector' (semantic — needs AI + VECTORIZE).
-      provider: (env.SEARCH_PROVIDER as SiteConfig['search']['provider']) ?? 'fts',
-      embeddingModel: '@cf/baai/bge-base-en-v1.5', // 768 dims — match the Vectorize index
+      provider: (env.SEARCH_PROVIDER as SiteConfig["search"]["provider"]) ?? "fts",
+      embeddingModel: "@cf/baai/bge-base-en-v1.5", // 768 dims — match the Vectorize index
       topK: 20,
     },
     payments: {
       // Build-time defaults; Admin → Settings → Payments overlays the rail + node
       // choice at runtime (payment_provider / lightning_backend in D1).
-      provider: 'stripe', // 'stripe' (cards) | 'lightning' (self-hosted BTC) | 'opennode'
+      provider: "stripe", // 'stripe' (cards) | 'lightning' (self-hosted BTC) | 'opennode'
       lightning: {
-        backend: 'phoenixd', // 'phoenixd' | 'lnbits'
+        backend: "phoenixd", // 'phoenixd' | 'lnbits'
         invoiceExpiryMinutes: 15,
-        rateUrl: 'https://api.coinbase.com/v2/prices/BTC-{currency}/spot',
+        rateUrl: "https://api.coinbase.com/v2/prices/BTC-{currency}/spot",
       },
     },
     email: {
       // Defaults; Admin → Settings → Email overlays enabled/provider/from at runtime.
       enabled: true, // sends once a provider key is configured (else no-op)
-      provider: 'resend', // 'resend' (free-plan friendly) | 'cloudflare' (paid plan)
-      from: 'onboarding@resend.dev', // Resend test sender; set a verified domain in admin for real customers
-      fromName: env.STORE_NAME ?? 'My Shop',
-      notifyTo: '', // owner "new order" notification — set yours in store.config.ts ('' = off)
+      provider: "resend", // 'resend' (free-plan friendly) | 'cloudflare' (paid plan)
+      from: "onboarding@resend.dev", // Resend test sender; set a verified domain in admin for real customers
+      fromName: env.STORE_NAME ?? "My Shop",
+      notifyTo: "", // owner "new order" notification — set yours in store.config.ts ('' = off)
     },
   };
 }
@@ -272,8 +272,8 @@ export function getConfig(): SiteConfig {
 // Currency scaling lives in the dependency-free ./money module (so unit-tested
 // code can use it without the Cloudflare runtime). Re-exported here as the app's
 // single money entry point.
-export { currencyDecimals, minorUnitsPerMajor, toMinorUnits, toMajorUnits } from './money';
-import { formatMoney } from './money';
+export { currencyDecimals, minorUnitsPerMajor, toMinorUnits, toMajorUnits } from "./money";
+import { formatMoney } from "./money";
 
 /**
  * Format integer minor units as a localized price string. Defaults to the store
@@ -295,19 +295,19 @@ export function formatPrice(cents: number, currency: string = getConfig().curren
  */
 export function formatDate(
   value: string | null | undefined,
-  opts: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' },
+  opts: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" },
   timeZone: string = getConfig().timeZone,
 ): string {
-  if (!value) return '';
+  if (!value) return "";
   // SQLite stores UTC without a zone marker; make it explicit so it isn't parsed
   // as local time. (Our timestamps never contain 'T' or 'Z'.)
-  const iso = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+  const iso = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return value;
   try {
-    return new Intl.DateTimeFormat('en-US', { timeZone, ...opts }).format(d);
+    return new Intl.DateTimeFormat("en-US", { timeZone, ...opts }).format(d);
   } catch {
     // A bad deployment override should never break an order/admin page.
-    return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...opts }).format(d);
+    return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...opts }).format(d);
   }
 }

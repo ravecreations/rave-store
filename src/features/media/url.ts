@@ -6,6 +6,6 @@
  * custom domain) it returns an absolute URL that bypasses the Worker's /images
  * route; otherwise a root-relative `/images/...` path.
  */
-export function mediaUrl(imageKey: string, baseUrl = ''): string {
+export function mediaUrl(imageKey: string, baseUrl = ""): string {
   return baseUrl ? `${baseUrl}/${imageKey}` : `/images/${imageKey}`;
 }

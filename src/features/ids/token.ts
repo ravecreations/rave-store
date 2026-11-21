@@ -15,9 +15,9 @@
  * Token matching is case-sensitive, unlike public IDs.
  */
 
-const B64URL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
-export const ACCESS_TOKEN_PREFIX = 'otk_';
+export const ACCESS_TOKEN_PREFIX = "otk_";
 
 /** Strict shape check: otk_ + 22 base64url chars ending in A/Q/g/w. */
 const TOKEN_RE = /^otk_[A-Za-z0-9_-]{21}[AQgw]$/;
@@ -25,7 +25,7 @@ const TOKEN_RE = /^otk_[A-Za-z0-9_-]{21}[AQgw]$/;
 function encodeBase64Url128(bytes: Uint8Array): string {
   // 16 bytes -> 22 chars: pack 6 bits at a time; the final char holds the last
   // 2 bits in its HIGH positions (low 4 bits zero -> canonical).
-  let out = '';
+  let out = "";
   let acc = 0;
   let accBits = 0;
   for (const b of bytes) {
@@ -63,7 +63,7 @@ export function generateAccessToken(): string {
 
 /** Case-sensitive, canonical-form-only. No normalization — tokens are pasted, not typed. */
 export function isAccessToken(value: unknown): value is string {
-  return typeof value === 'string' && TOKEN_RE.test(value);
+  return typeof value === "string" && TOKEN_RE.test(value);
 }
 
 /**
@@ -72,5 +72,5 @@ export function isAccessToken(value: unknown): value is string {
  * defense-in-depth on top.
  */
 export function redactAccessTokens(text: string): string {
-  return text.replace(/otk_[A-Za-z0-9_-]{22}/g, 'otk_REDACTED');
+  return text.replace(/otk_[A-Za-z0-9_-]{22}/g, "otk_REDACTED");
 }

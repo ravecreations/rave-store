@@ -1,10 +1,7 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import { normalizeTimeZone } from './timeZone';
-import {
-  parseRuntimeShippingConfig,
-  type ParsedRuntimeShippingConfig,
-} from '../shipping/settings';
-import { defaultWeightUnit, isWeightUnit, type WeightUnit } from '../shipping/weight';
+import type { D1Database } from "@cloudflare/workers-types";
+import { normalizeTimeZone } from "./timeZone";
+import { parseRuntimeShippingConfig, type ParsedRuntimeShippingConfig } from "../shipping/settings";
+import { defaultWeightUnit, isWeightUnit, type WeightUnit } from "../shipping/weight";
 
 /**
  * Runtime settings — the small set of values the setup wizard persists to D1 so
@@ -14,48 +11,48 @@ import { defaultWeightUnit, isWeightUnit, type WeightUnit } from '../shipping/we
 
 /** Keys we store. Kept narrow on purpose — most config remains build-time. */
 export type SettingKey =
-  | 'setup_complete' // '1' once the wizard has been finished
-  | 'store_name' // overrides config.storeName
-  | 'time_zone' // IANA zone for store/admin date display; absent = config/env default
-  | 'stripe_webhook_secret' // captured by webhook auto-registration (env wins if set)
-  | 'payment_methods_disabled' // CSV of payment methods the admin switched off
-  | 'cart_enabled' // '0' = cart/checkout off (browse-only catalog); absent = on
-  | 'buy_now_enabled' // '0' = hide "Buy now" (cart-only purchase); absent = on
-  | 'search_provider' // 'fts' | 'vector' — overrides config/SEARCH_PROVIDER; absent = default
+  | "setup_complete" // '1' once the wizard has been finished
+  | "store_name" // overrides config.storeName
+  | "time_zone" // IANA zone for store/admin date display; absent = config/env default
+  | "stripe_webhook_secret" // captured by webhook auto-registration (env wins if set)
+  | "payment_methods_disabled" // CSV of payment methods the admin switched off
+  | "cart_enabled" // '0' = cart/checkout off (browse-only catalog); absent = on
+  | "buy_now_enabled" // '0' = hide "Buy now" (cart-only purchase); absent = on
+  | "search_provider" // 'fts' | 'vector' — overrides config/SEARCH_PROVIDER; absent = default
   // Runtime overrides of build-time config toggles ('1'/'0'; absent = inherit config).
-  | 'discounts_enabled' // overrides config.discounts.enabled
-  | 'tax_enabled' // overrides config.tax.enabled
-  | 'accounts_enabled' // overrides config.features.accounts
-  | 'image_optimize' // overrides config.images.optimizeOnUpload
-  | 'image_delivery' // 'cloudflare' = responsive on-demand transforms; absent = originals
-  | 'shipping_enabled' // LEGACY: overrides config.shipping.enabled. Only consulted while no shipping_config document exists.
-  | 'shipping_config' // the merchant-managed shipping document (JSON; see features/shipping/settings.ts)
-  | 'weight_unit' // 'g' | 'kg' | 'oz' | 'lb' — Admin input/display unit; storage is always grams
-  | 'ship_from' // JSON ShipFrom — the store's return address for label purchase (read at label time, not in locals)
-  | 'parcel_default' // JSON {length,width,height} — remembered box dimensions for label purchase
+  | "discounts_enabled" // overrides config.discounts.enabled
+  | "tax_enabled" // overrides config.tax.enabled
+  | "accounts_enabled" // overrides config.features.accounts
+  | "image_optimize" // overrides config.images.optimizeOnUpload
+  | "image_delivery" // 'cloudflare' = responsive on-demand transforms; absent = originals
+  | "shipping_enabled" // LEGACY: overrides config.shipping.enabled. Only consulted while no shipping_config document exists.
+  | "shipping_config" // the merchant-managed shipping document (JSON; see features/shipping/settings.ts)
+  | "weight_unit" // 'g' | 'kg' | 'oz' | 'lb' — Admin input/display unit; storage is always grams
+  | "ship_from" // JSON ShipFrom — the store's return address for label purchase (read at label time, not in locals)
+  | "parcel_default" // JSON {length,width,height} — remembered box dimensions for label purchase
   // Integrations configured in the admin dashboard (non-secret halves; the keys
   // live encrypted in the vault — see features/secrets/store.ts).
-  | 'email_enabled' // '0' = order/login email off; absent = on
-  | 'email_provider' // 'resend' | 'cloudflare'; absent = resend
-  | 'logo_image_key' // media image_key shown instead of the text store name; absent = text
-  | 'home_page' // what / renders: 'page:<id>' | 'product:<id>'; absent = the catalog list
-  | 'announcement' // storefront announcement bar text; absent/empty = bar hidden
-  | 'announcement_href' // optional link for the announcement bar
-  | 'email_from' // sender address; absent = build-time default
-  | 'store_url' // origin last seen serving a settlement, so the cron can build order links
-  | 'email_from_name' // sender display name; absent = store name
-  | 'email_notify_to' // owner "new order" alert recipient; absent = store.config.ts notifyTo
-  | 'turnstile_enabled' // '1' = bot challenge on (admin login + customer sign-in); absent = off
-  | 'turnstile_site_key' // Turnstile public sitekey
-  | 'payment_provider' // 'stripe' | 'lightning' | 'opennode' | 'demo'; absent = stripe
-  | 'lightning_backend' // 'phoenixd' | 'lnbits'; absent = phoenixd
-  | 'lnbits_url' // LNbits node URL (the invoice/read key is in the vault)
-  | 'phoenixd_url' // phoenixd node URL (the password is in the vault)
-  | 'opennode_api_url' // OpenNode API base override (testnet); absent = live default
+  | "email_enabled" // '0' = order/login email off; absent = on
+  | "email_provider" // 'resend' | 'cloudflare'; absent = resend
+  | "logo_image_key" // media image_key shown instead of the text store name; absent = text
+  | "home_page" // what / renders: 'page:<id>' | 'product:<id>'; absent = the catalog list
+  | "announcement" // storefront announcement bar text; absent/empty = bar hidden
+  | "announcement_href" // optional link for the announcement bar
+  | "email_from" // sender address; absent = build-time default
+  | "store_url" // origin last seen serving a settlement, so the cron can build order links
+  | "email_from_name" // sender display name; absent = store name
+  | "email_notify_to" // owner "new order" alert recipient; absent = store.config.ts notifyTo
+  | "turnstile_enabled" // '1' = bot challenge on (admin login + customer sign-in); absent = off
+  | "turnstile_site_key" // Turnstile public sitekey
+  | "payment_provider" // 'stripe' | 'lightning' | 'opennode' | 'demo'; absent = stripe
+  | "lightning_backend" // 'phoenixd' | 'lnbits'; absent = phoenixd
+  | "lnbits_url" // LNbits node URL (the invoice/read key is in the vault)
+  | "phoenixd_url" // phoenixd node URL (the password is in the vault)
+  | "opennode_api_url" // OpenNode API base override (testnet); absent = live default
   | `enc:${string}`; // AES-GCM-encrypted secret (see features/secrets/store.ts), e.g. 'enc:stripe_secret_key'. Never loaded as plaintext into locals.
 
 /** The storefront features that can be flipped at runtime (default on). */
-export type FeatureKey = 'cart_enabled' | 'buy_now_enabled';
+export type FeatureKey = "cart_enabled" | "buy_now_enabled";
 
 export interface StoreSettings {
   setupComplete: boolean;
@@ -72,7 +69,7 @@ export interface StoreSettings {
   buyNowEnabled: boolean;
   /** Search backend chosen at runtime, or null to use the build-time default
    *  (config.search.provider / SEARCH_PROVIDER). */
-  searchProvider: 'fts' | 'vector' | null;
+  searchProvider: "fts" | "vector" | null;
   /** Payment-secret names (e.g. 'stripe_secret_key') the admin has stored encrypted
    *  in D1 — i.e. names with a non-empty `enc:` row. Lets the storefront know a key
    *  is configured WITHOUT decrypting it. Env-var fallbacks are checked separately
@@ -81,7 +78,7 @@ export interface StoreSettings {
   /** Order/login email on (default true; a no-op until a provider key is set). */
   emailEnabled: boolean;
   /** Email backend: 'resend' (free) or 'cloudflare' (paid send_email binding). */
-  emailProvider: 'resend' | 'cloudflare';
+  emailProvider: "resend" | "cloudflare";
   /** Sender address / display name, or null to use the build-time defaults. */
   /** Header logo object key, or null to render the store name as text. Stores the
    *  immutable key rather than a media id so the layout renders it without a
@@ -105,7 +102,7 @@ export interface StoreSettings {
   accountsEnabled: boolean | null;
   imageOptimize: boolean | null;
   /** Product-image delivery. Original is the safe, zero-configuration default. */
-  imageDelivery: 'original' | 'cloudflare';
+  imageDelivery: "original" | "cloudflare";
   /** LEGACY on/off switch. Consulted only when `shippingConfig` is absent — a
    *  saved document owns `enabled` itself. */
   shippingEnabled: boolean | null;
@@ -120,9 +117,9 @@ export interface StoreSettings {
   /** Turnstile public sitekey, or null. (The secret lives in the vault.) */
   turnstileSiteKey: string | null;
   /** Default payment rail (Settings → Payments). Default 'stripe'. */
-  paymentProvider: 'stripe' | 'lightning' | 'opennode' | 'demo';
+  paymentProvider: "stripe" | "lightning" | "opennode" | "demo";
   /** Self-hosted Lightning node (when provider/rail is lightning). Default 'phoenixd'. */
-  lightningBackend: 'phoenixd' | 'lnbits';
+  lightningBackend: "phoenixd" | "lnbits";
   /** Lightning node URLs, or null. (The key/password live in the vault.) */
   lnbitsUrl: string | null;
   phoenixdUrl: string | null;
@@ -133,7 +130,7 @@ export interface StoreSettings {
 /** One setting value, or null if unset. */
 export async function getSetting(db: D1Database, key: SettingKey): Promise<string | null> {
   const row = await db
-    .prepare('SELECT value FROM settings WHERE key = ?')
+    .prepare("SELECT value FROM settings WHERE key = ?")
     .bind(key)
     .first<{ value: string }>();
   return row?.value ?? null;
@@ -145,8 +142,8 @@ export async function setSetting(
   key: SettingKey,
   value: string | null | undefined,
 ): Promise<void> {
-  if (value == null || value === '') {
-    await db.prepare('DELETE FROM settings WHERE key = ?').bind(key).run();
+  if (value == null || value === "") {
+    await db.prepare("DELETE FROM settings WHERE key = ?").bind(key).run();
     return;
   }
   await db
@@ -160,7 +157,7 @@ export async function setSetting(
 
 /** The single settings read. Exported so middleware can put it in a batch
  *  alongside the footer's page links without duplicating the SQL. */
-export const STORE_SETTINGS_SQL = 'SELECT key, value FROM settings';
+export const STORE_SETTINGS_SQL = "SELECT key, value FROM settings";
 
 /** All overlay settings in one read (used by middleware to populate locals). */
 export async function getStoreSettings(db: D1Database): Promise<StoreSettings> {
@@ -172,59 +169,66 @@ export async function getStoreSettings(db: D1Database): Promise<StoreSettings> {
 }
 
 /** Rows → settings. Split from the query so a batched read parses identically. */
-export function parseStoreSettings(
-  results: Array<{ key: string; value: string }>,
-): StoreSettings {
+export function parseStoreSettings(results: Array<{ key: string; value: string }>): StoreSettings {
   const map = new Map((results ?? []).map((r) => [r.key, r.value]));
   return {
-    setupComplete: map.get('setup_complete') === '1',
-    storeName: map.get('store_name') ?? null,
-    timeZone: normalizeTimeZone(map.get('time_zone')),
-    stripeWebhookSecret: map.get('stripe_webhook_secret') ?? null,
-    disabledPaymentMethods: (map.get('payment_methods_disabled') ?? '')
-      .split(',')
+    setupComplete: map.get("setup_complete") === "1",
+    storeName: map.get("store_name") ?? null,
+    timeZone: normalizeTimeZone(map.get("time_zone")),
+    stripeWebhookSecret: map.get("stripe_webhook_secret") ?? null,
+    disabledPaymentMethods: (map.get("payment_methods_disabled") ?? "")
+      .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
-    cartEnabled: map.get('cart_enabled') !== '0',
-    buyNowEnabled: map.get('buy_now_enabled') !== '0',
-    searchProvider: map.get('search_provider') === 'vector' ? 'vector'
-      : map.get('search_provider') === 'fts' ? 'fts'
-      : null,
+    cartEnabled: map.get("cart_enabled") !== "0",
+    buyNowEnabled: map.get("buy_now_enabled") !== "0",
+    searchProvider:
+      map.get("search_provider") === "vector"
+        ? "vector"
+        : map.get("search_provider") === "fts"
+          ? "fts"
+          : null,
     configuredSecrets: (results ?? [])
-      .filter((r) => r.key.startsWith('enc:') && r.value)
+      .filter((r) => r.key.startsWith("enc:") && r.value)
       .map((r) => r.key.slice(4)),
-    emailEnabled: map.get('email_enabled') !== '0',
-    emailProvider: map.get('email_provider') === 'cloudflare' ? 'cloudflare' : 'resend',
-    logoImageKey: map.get('logo_image_key') ?? null,
-    homePage: map.get('home_page') ?? null,
-    announcement: map.get('announcement') ?? null,
-    announcementHref: map.get('announcement_href') ?? null,
-    emailFrom: map.get('email_from') ?? null,
-    emailFromName: map.get('email_from_name') ?? null,
-    emailNotifyTo: map.get('email_notify_to') ?? null,
-    discountsEnabled: map.get('discounts_enabled') == null ? null : map.get('discounts_enabled') === '1',
-    taxEnabled: map.get('tax_enabled') == null ? null : map.get('tax_enabled') === '1',
-    accountsEnabled: map.get('accounts_enabled') == null ? null : map.get('accounts_enabled') === '1',
-    imageOptimize: map.get('image_optimize') == null ? null : map.get('image_optimize') === '1',
-    imageDelivery: map.get('image_delivery') === 'cloudflare' ? 'cloudflare' : 'original',
-    shippingEnabled: map.get('shipping_enabled') == null ? null : map.get('shipping_enabled') === '1',
+    emailEnabled: map.get("email_enabled") !== "0",
+    emailProvider: map.get("email_provider") === "cloudflare" ? "cloudflare" : "resend",
+    logoImageKey: map.get("logo_image_key") ?? null,
+    homePage: map.get("home_page") ?? null,
+    announcement: map.get("announcement") ?? null,
+    announcementHref: map.get("announcement_href") ?? null,
+    emailFrom: map.get("email_from") ?? null,
+    emailFromName: map.get("email_from_name") ?? null,
+    emailNotifyTo: map.get("email_notify_to") ?? null,
+    discountsEnabled:
+      map.get("discounts_enabled") == null ? null : map.get("discounts_enabled") === "1",
+    taxEnabled: map.get("tax_enabled") == null ? null : map.get("tax_enabled") === "1",
+    accountsEnabled:
+      map.get("accounts_enabled") == null ? null : map.get("accounts_enabled") === "1",
+    imageOptimize: map.get("image_optimize") == null ? null : map.get("image_optimize") === "1",
+    imageDelivery: map.get("image_delivery") === "cloudflare" ? "cloudflare" : "original",
+    shippingEnabled:
+      map.get("shipping_enabled") == null ? null : map.get("shipping_enabled") === "1",
     // Parsed from the rows we already have — no extra query, and the storefront
     // never has to decide what a malformed document means on its own.
-    shippingConfig: parseRuntimeShippingConfig(map.get('shipping_config')),
-    weightUnit: isWeightUnit(map.get('weight_unit'))
-      ? (map.get('weight_unit') as WeightUnit)
-      : defaultWeightUnit(normalizeTimeZone(map.get('time_zone'))),
-    turnstileEnabled: map.get('turnstile_enabled') === '1',
-    turnstileSiteKey: map.get('turnstile_site_key') ?? null,
+    shippingConfig: parseRuntimeShippingConfig(map.get("shipping_config")),
+    weightUnit: isWeightUnit(map.get("weight_unit"))
+      ? (map.get("weight_unit") as WeightUnit)
+      : defaultWeightUnit(normalizeTimeZone(map.get("time_zone"))),
+    turnstileEnabled: map.get("turnstile_enabled") === "1",
+    turnstileSiteKey: map.get("turnstile_site_key") ?? null,
     paymentProvider:
-      map.get('payment_provider') === 'lightning' ? 'lightning'
-      : map.get('payment_provider') === 'opennode' ? 'opennode'
-      : map.get('payment_provider') === 'demo' ? 'demo'
-      : 'stripe',
-    lightningBackend: map.get('lightning_backend') === 'lnbits' ? 'lnbits' : 'phoenixd',
-    lnbitsUrl: map.get('lnbits_url') ?? null,
-    phoenixdUrl: map.get('phoenixd_url') ?? null,
-    opennodeApiUrl: map.get('opennode_api_url') ?? null,
+      map.get("payment_provider") === "lightning"
+        ? "lightning"
+        : map.get("payment_provider") === "opennode"
+          ? "opennode"
+          : map.get("payment_provider") === "demo"
+            ? "demo"
+            : "stripe",
+    lightningBackend: map.get("lightning_backend") === "lnbits" ? "lnbits" : "phoenixd",
+    lnbitsUrl: map.get("lnbits_url") ?? null,
+    phoenixdUrl: map.get("phoenixd_url") ?? null,
+    opennodeApiUrl: map.get("opennode_api_url") ?? null,
   };
 }
 
@@ -237,7 +241,7 @@ export async function setFeatureEnabled(
   key: FeatureKey,
   enabled: boolean,
 ): Promise<void> {
-  await setSetting(db, key, enabled ? null : '0');
+  await setSetting(db, key, enabled ? null : "0");
 }
 
 /**
@@ -249,15 +253,15 @@ export async function setPaymentMethodDisabled(
   method: string,
   disabled: boolean,
 ): Promise<void> {
-  const current = (await getSetting(db, 'payment_methods_disabled')) ?? '';
+  const current = (await getSetting(db, "payment_methods_disabled")) ?? "";
   const set = new Set(
     current
-      .split(',')
+      .split(",")
       .map((s) => s.trim())
       .filter(Boolean),
   );
   if (disabled) set.add(method);
   else set.delete(method);
   // Empty string → setSetting deletes the row → back to the "nothing disabled" default.
-  await setSetting(db, 'payment_methods_disabled', [...set].join(','));
+  await setSetting(db, "payment_methods_disabled", [...set].join(","));
 }

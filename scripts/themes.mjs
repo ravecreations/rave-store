@@ -9,35 +9,35 @@
  * Selection is BUILD TIME. The active theme is baked into a deployment; it is
  * never read from a request.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 
-export const THEMES_DIR = 'src/themes';
-export const CONFIG_FILE = 'theme.config.json';
+export const THEMES_DIR = "src/themes";
+export const CONFIG_FILE = "theme.config.json";
 
 /** Ids upstream owns. A store may not claim one, or a later upstream release
  *  would have nowhere to put the theme the name was held for. `studio` and
  *  `market` are frozen here before the scaffolder can generate stores, even
  *  though those designs do not exist yet — reserving a string costs nothing;
  *  reclaiming one after stores exist costs a migration. */
-export const RESERVED_THEME_IDS = ['default', 'studio', 'market'];
+export const RESERVED_THEME_IDS = ["default", "studio", "market"];
 
 /** Lowercase, digits, single inner hyphens. Deliberately narrow: this becomes a
  *  directory name, an import specifier, and a configuration value. */
 const THEME_ID = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 export function isValidThemeId(id) {
-  return typeof id === 'string' && id.length > 0 && id.length <= 40 && THEME_ID.test(id);
+  return typeof id === "string" && id.length > 0 && id.length <= 40 && THEME_ID.test(id);
 }
 
 /** Turn a free-form name into a usable id, or null when nothing survives. */
 export function normalizeThemeId(name) {
-  const slug = String(name ?? '')
+  const slug = String(name ?? "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 40)
-    .replace(/-+$/, '');
+    .replace(/-+$/, "");
   return isValidThemeId(slug) ? slug : null;
 }
 
@@ -56,7 +56,7 @@ export function discoverThemeIds(root = process.cwd()) {
   const ids = [];
   const invalid = [];
   for (const name of readdirSync(dir)) {
-    if (name.startsWith('.')) continue;
+    if (name.startsWith(".")) continue;
     if (!statSync(join(dir, name)).isDirectory()) continue;
     if (isValidThemeId(name)) ids.push(name);
     else invalid.push(name);
@@ -64,10 +64,10 @@ export function discoverThemeIds(root = process.cwd()) {
   if (invalid.length > 0) {
     throw new Error(
       [
-        `Invalid theme director${invalid.length === 1 ? 'y' : 'ies'} under ${THEMES_DIR}/: ${invalid.join(', ')}.`,
-        'Theme ids use lowercase letters, digits, and single hyphens — at most 40 characters.',
+        `Invalid theme director${invalid.length === 1 ? "y" : "ies"} under ${THEMES_DIR}/: ${invalid.join(", ")}.`,
+        "Theme ids use lowercase letters, digits, and single hyphens — at most 40 characters.",
         'Rename the directory (e.g. "My-Theme" → "my-theme") or move it out of the themes directory.',
-      ].join('\n'),
+      ].join("\n"),
     );
   }
   return ids.sort();
@@ -79,7 +79,8 @@ export function themePath(id, root = process.cwd()) {
   // parent would be a path-traversal bug in a build script.
   const dir = resolve(root, THEMES_DIR, id);
   const parent = resolve(root, THEMES_DIR);
-  if (dir !== join(parent, id)) throw new Error(themeError(`"${id}" does not resolve inside ${THEMES_DIR}/.`, root));
+  if (dir !== join(parent, id))
+    throw new Error(themeError(`"${id}" does not resolve inside ${THEMES_DIR}/.`, root));
   return dir;
 }
 
@@ -96,10 +97,10 @@ function themeError(message, root) {
   return [
     message,
     available.length > 0
-      ? `Available themes: ${available.join(', ')}`
+      ? `Available themes: ${available.join(", ")}`
       : `No themes found under ${THEMES_DIR}/.`,
     `Set one in ${CONFIG_FILE} ({ "theme": "…" }) or via the THEME environment variable.`,
-  ].join('\n');
+  ].join("\n");
 }
 
 /**
@@ -115,7 +116,7 @@ function themeError(message, root) {
 export function resolveTheme(root = process.cwd()) {
   const override = process.env.THEME?.trim();
   if (override) {
-    return validateTheme(override, 'the THEME environment variable', root);
+    return validateTheme(override, "the THEME environment variable", root);
   }
   return resolveConfiguredTheme(root);
 }
@@ -139,11 +140,11 @@ export function resolveConfiguredTheme(root = process.cwd()) {
   }
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync(file, 'utf8'));
+    parsed = JSON.parse(readFileSync(file, "utf8"));
   } catch (error) {
     throw new Error(themeError(`${CONFIG_FILE} is not valid JSON: ${error.message}`, root));
   }
-  const id = typeof parsed?.theme === 'string' ? parsed.theme.trim() : '';
+  const id = typeof parsed?.theme === "string" ? parsed.theme.trim() : "";
   if (!id) throw new Error(themeError(`${CONFIG_FILE} has no "theme" string.`, root));
   return validateTheme(id, CONFIG_FILE, root);
 }

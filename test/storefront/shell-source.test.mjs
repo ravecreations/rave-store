@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 
 // Deliberately .mjs: reading source files needs node types, and
 // tsconfig.compilerOptions.types is pinned to the Cloudflare types. Same reason
@@ -21,23 +21,23 @@ import { readFileSync } from 'node:fs';
  * tag-filtering regex for someone to copy somewhere it WOULD matter.
  */
 function withoutScripts(html) {
-  let out = '';
+  let out = "";
   let cursor = 0;
   for (;;) {
-    const open = html.indexOf('<script', cursor);
+    const open = html.indexOf("<script", cursor);
     if (open === -1) return out + html.slice(cursor);
     out += html.slice(cursor, open);
-    const close = html.indexOf('</script', open);
+    const close = html.indexOf("</script", open);
     // Unterminated block: drop the remainder rather than emit script source.
     if (close === -1) return out;
-    const end = html.indexOf('>', close + '</script'.length);
+    const end = html.indexOf(">", close + "</script".length);
     if (end === -1) return out;
     cursor = end + 1;
   }
 }
 
-describe('the document shell', () => {
-  const layout = readFileSync('src/layouts/Layout.astro', 'utf8');
+describe("the document shell", () => {
+  const layout = readFileSync("src/layouts/Layout.astro", "utf8");
 
   // Every hook name ALSO appears inside the enhancement script, as the selector
   // it queries. Asserting against the whole file would therefore pass with the
@@ -47,27 +47,27 @@ describe('the document shell', () => {
   const markup = withoutScripts(layout);
 
   it.each([
-    'data-cart-drawer',
-    'data-cart-panel',
-    'data-cart-backdrop',
-    'data-cart-body',
-    'data-cart-close',
-  ])('keeps %s in the document-shell markup, not only in the script', (hook) => {
+    "data-cart-drawer",
+    "data-cart-panel",
+    "data-cart-backdrop",
+    "data-cart-body",
+    "data-cart-close",
+  ])("keeps %s in the document-shell markup, not only in the script", (hook) => {
     expect(markup).toContain(hook);
   });
 
-  it('keeps the drawer outside the store-owned header', () => {
+  it("keeps the drawer outside the store-owned header", () => {
     // A fixed dialog nested inside the sticky, backdrop-filtered header would
     // take the header as its containing block and mis-position.
-    expect(markup.indexOf('data-cart-drawer')).toBeGreaterThan(markup.indexOf('<StoreFooter'));
+    expect(markup.indexOf("data-cart-drawer")).toBeGreaterThan(markup.indexOf("<StoreFooter"));
   });
 
-  it('reads the count the cart partial writes', () => {
+  it("reads the count the cart partial writes", () => {
     // Two sides of one contract: the partial emits data-cart-count, the shell
     // script queries it. A one-sided rename passes both files in isolation.
-    const partial = readFileSync('src/pages/partials/cart.astro', 'utf8');
+    const partial = readFileSync("src/pages/partials/cart.astro", "utf8");
 
-    expect(partial).toContain('data-cart-count');
-    expect(layout).toContain('[data-cart-count]');
+    expect(partial).toContain("data-cart-count");
+    expect(layout).toContain("[data-cart-count]");
   });
 });

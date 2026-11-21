@@ -1,6 +1,6 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { publicOrigin } from '../features/http/origin';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
+import { publicOrigin } from "../features/http/origin";
 
 export const prerender = false;
 
@@ -13,6 +13,6 @@ Disallow: /api/
 Sitemap: ${origin}/sitemap.xml
 `;
   return new Response(body, {
-    headers: { 'content-type': 'text/plain; charset=utf-8' },
+    headers: { "content-type": "text/plain; charset=utf-8" },
   });
 };

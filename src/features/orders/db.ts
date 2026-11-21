@@ -1,9 +1,6 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import {
-  visibleStockChanged,
-  type StockTransitionPurger,
-} from '../products/stock.ts';
-import { generatePublicId } from '../ids/publicId.ts';
+import type { D1Database } from "@cloudflare/workers-types";
+import { visibleStockChanged, type StockTransitionPurger } from "../products/stock.ts";
+import { generatePublicId } from "../ids/publicId.ts";
 
 export interface ShippingAddress {
   name: string | null;
@@ -93,7 +90,7 @@ export interface InventoryException {
 
 export async function countUnresolvedInventoryExceptions(db: D1Database): Promise<number> {
   const row = await db
-    .prepare('SELECT COUNT(*) AS n FROM order_inventory_exceptions WHERE resolved_at IS NULL')
+    .prepare("SELECT COUNT(*) AS n FROM order_inventory_exceptions WHERE resolved_at IS NULL")
     .first<{ n: number }>();
   return row?.n ?? 0;
 }
@@ -155,7 +152,7 @@ export interface PaidOrderInput {
   publicId?: string;
   /** Inventory reservation already holding this order's stock. */
   reservationId?: string;
-  reservationStatus?: 'active' | 'payment_pending' | 'expired' | 'failed';
+  reservationStatus?: "active" | "payment_pending" | "expired" | "failed";
   email: string | null;
   amountTotalCents: number;
   shippingCents?: number;
@@ -163,7 +160,7 @@ export interface PaidOrderInput {
    *  Snapshotted so later catalog or rate edits cannot rewrite history. */
   shippingLabel?: string | null;
   shippingWeightGrams?: number | null;
-  deliveryMethod?: 'pickup' | 'shipping' | 'unknown' | null;
+  deliveryMethod?: "pickup" | "shipping" | "unknown" | null;
   discountCents?: number;
   taxCents?: number;
   shippingAddress?: ShippingAddress | null;
@@ -195,13 +192,13 @@ export interface OrderFilter {
   where: string;
   params: string[];
 }
-const EMPTY_FILTER: OrderFilter = { where: '', params: [] };
+const EMPTY_FILTER: OrderFilter = { where: "", params: [] };
 
 /** Recent orders for the admin view, newest first. */
 export async function listOrders(
   db: D1Database,
   limit = 50,
-  orderBy = 'created_at DESC',
+  orderBy = "created_at DESC",
   offset = 0,
   filter: OrderFilter = EMPTY_FILTER,
 ): Promise<Order[]> {
@@ -232,7 +229,9 @@ export async function listOrdersByEmail(
   offset = 0,
 ): Promise<Order[]> {
   const { results } = await db
-    .prepare('SELECT * FROM orders WHERE lower(trim(email)) = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+    .prepare(
+      "SELECT * FROM orders WHERE lower(trim(email)) = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+    )
     .bind(email.trim().toLowerCase(), limit, offset)
     .all<Order>();
   return results ?? [];
@@ -241,7 +240,7 @@ export async function listOrdersByEmail(
 /** Total orders belonging to one normalized customer email. */
 export async function countOrdersByEmail(db: D1Database, email: string): Promise<number> {
   const row = await db
-    .prepare('SELECT COUNT(*) AS n FROM orders WHERE lower(trim(email)) = ?')
+    .prepare("SELECT COUNT(*) AS n FROM orders WHERE lower(trim(email)) = ?")
     .bind(email.trim().toLowerCase())
     .first<{ n: number }>();
   return row?.n ?? 0;
@@ -306,7 +305,7 @@ export async function orderStats(
 
 /** Single order by id, or null if missing. */
 export async function getOrder(db: D1Database, id: number): Promise<Order | null> {
-  return db.prepare('SELECT * FROM orders WHERE id = ?').bind(id).first<Order>();
+  return db.prepare("SELECT * FROM orders WHERE id = ?").bind(id).first<Order>();
 }
 
 // Refund writes live in features/refunds/db.ts. They cannot happen here any
@@ -316,7 +315,7 @@ export async function getOrder(db: D1Database, id: number): Promise<Order | null
 
 /** Single order by its public token, or null if missing (customer-facing). */
 export async function getOrderByPublicId(db: D1Database, publicId: string): Promise<Order | null> {
-  return db.prepare('SELECT * FROM orders WHERE public_id = ?').bind(publicId).first<Order>();
+  return db.prepare("SELECT * FROM orders WHERE public_id = ?").bind(publicId).first<Order>();
 }
 
 /**
@@ -328,7 +327,7 @@ export async function findOrderPublicIdByReference(
   reference: string,
 ): Promise<string | null> {
   const row = await db
-    .prepare('SELECT order_public_id FROM order_reference_aliases WHERE reference = ?')
+    .prepare("SELECT order_public_id FROM order_reference_aliases WHERE reference = ?")
     .bind(reference)
     .first<{ order_public_id: string }>();
   return row?.order_public_id ?? null;
@@ -340,7 +339,7 @@ export async function getOrderByProviderSessionId(
   providerSessionId: string,
 ): Promise<Order | null> {
   return db
-    .prepare('SELECT * FROM orders WHERE provider_session_id = ?')
+    .prepare("SELECT * FROM orders WHERE provider_session_id = ?")
     .bind(providerSessionId)
     .first<Order>();
 }
@@ -376,7 +375,7 @@ export async function fulfillOrder(
 /** Revert an order to unfulfilled, clearing tracking. */
 /** Attach a purchased label's document URL (fulfillOrder records the tracking). */
 export async function setOrderLabelUrl(db: D1Database, id: number, url: string): Promise<void> {
-  await db.prepare('UPDATE orders SET label_url = ? WHERE id = ?').bind(url, id).run();
+  await db.prepare("UPDATE orders SET label_url = ? WHERE id = ?").bind(url, id).run();
 }
 
 export async function unfulfillOrder(db: D1Database, id: number): Promise<void> {
@@ -394,7 +393,7 @@ export async function unfulfillOrder(db: D1Database, id: number): Promise<void> 
 /** Line items for an order, in insertion order. */
 export async function listOrderItems(db: D1Database, orderId: number): Promise<OrderItem[]> {
   const { results } = await db
-    .prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY id')
+    .prepare("SELECT * FROM order_items WHERE order_id = ? ORDER BY id")
     .bind(orderId)
     .all<OrderItem>();
   return results ?? [];
@@ -457,10 +456,10 @@ export async function recordPaidOrder(
   const pendingExceptionIds = new Set<string>();
   const mintInventoryExceptionId = async (): Promise<string> => {
     for (let attempt = 0; attempt < 3; attempt++) {
-      const candidate = generatePublicId('inventoryException');
+      const candidate = generatePublicId("inventoryException");
       if (pendingExceptionIds.has(candidate)) continue;
       const exists = await db
-        .prepare('SELECT public_id FROM order_inventory_exceptions WHERE public_id = ?')
+        .prepare("SELECT public_id FROM order_inventory_exceptions WHERE public_id = ?")
         .bind(candidate)
         .first<{ public_id: string }>();
       if (!exists) {
@@ -468,7 +467,7 @@ export async function recordPaidOrder(
         return candidate;
       }
     }
-    throw new Error('inventory exception identity collision retry exhausted');
+    throw new Error("inventory exception identity collision retry exhausted");
   };
   const orderValues = [
     o.providerSessionId,
@@ -533,7 +532,7 @@ export async function recordPaidOrder(
   for (const item of items) {
     if (item.publicId) {
       const claim = await db
-        .prepare('SELECT order_public_id FROM order_item_ids WHERE public_id = ?')
+        .prepare("SELECT order_public_id FROM order_item_ids WHERE public_id = ?")
         .bind(item.publicId)
         .first<{ order_public_id: string }>();
       if (!claim || claim.order_public_id !== publicId) {
@@ -542,7 +541,7 @@ export async function recordPaidOrder(
       continue;
     }
     for (let attempt = 0; attempt < 3; attempt++) {
-      const candidate = generatePublicId('orderItem');
+      const candidate = generatePublicId("orderItem");
       const exists = await db
         .prepare(
           `SELECT public_id FROM order_item_ids WHERE public_id = ?
@@ -555,14 +554,14 @@ export async function recordPaidOrder(
         break;
       }
     }
-    if (!item.publicId) throw new Error('order item identity collision retry exhausted');
+    if (!item.publicId) throw new Error("order item identity collision retry exhausted");
   }
-  const lateReservation = o.reservationStatus === 'expired' || o.reservationStatus === 'failed';
+  const lateReservation = o.reservationStatus === "expired" || o.reservationStatus === "failed";
   const skipStock = Boolean(o.reservationId) && !lateReservation;
   for (const it of items) {
     const variantId = it.variantId ?? null;
     if (!it.publicId) {
-      throw new Error('A settled order item must have a public identity.');
+      throw new Error("A settled order item must have a public identity.");
     }
     if (it.needsClaim) {
       stmts.push(
@@ -722,7 +721,7 @@ export async function recordPaidOrder(
   // non-applicable row resolves to 'skipped'. Guarded on this invocation's
   // settlement-token claim like everything else in the batch; ON CONFLICT is
   // belt-and-braces for a re-run against an already-claimed order.
-  for (const kind of ['customer-receipt', 'owner-notification'] as const) {
+  for (const kind of ["customer-receipt", "owner-notification"] as const) {
     stmts.push(
       db
         .prepare(
@@ -759,25 +758,23 @@ export async function recordPaidOrder(
 
   const changedProductIds = stockUpdates.flatMap((update) => {
     const after = results[update.statementIndex]?.results[0]?.stock;
-    if (typeof after !== 'number') return [];
+    if (typeof after !== "number") return [];
     // A clamped legacy decrement returning zero started above zero because the
     // update guard excludes an already-empty row. Any positive result can
     // reconstruct the exact prior quantity.
     const before = after === 0 ? 1 : after + update.quantity;
-    return visibleStockChanged(update.hasVariant, before, after)
-      ? [update.productId]
-      : [];
+    return visibleStockChanged(update.hasVariant, before, after) ? [update.productId] : [];
   });
   if (stockPurger && changedProductIds.length > 0) {
     const unique = [...new Set(changedProductIds)];
-    const placeholders = unique.map(() => '?').join(',');
+    const placeholders = unique.map(() => "?").join(",");
     const { results: products } = await db
       .prepare(`SELECT public_id FROM products WHERE id IN (${placeholders})`)
       .bind(...unique)
       .all<{ public_id: string | null }>();
     const publicIds = (products ?? [])
       .map((product) => product.public_id)
-      .filter((publicId): publicId is string => typeof publicId === 'string');
+      .filter((publicId): publicId is string => typeof publicId === "string");
     if (publicIds.length > 0) await stockPurger(publicIds);
   }
   return claimed.id;

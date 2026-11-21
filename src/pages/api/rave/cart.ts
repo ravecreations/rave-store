@@ -1,7 +1,7 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { cartCount, readCart, resolveCart } from '../../../features/cart/cart';
-import { formatPrice } from '../../../config';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
+import { cartCount, readCart, resolveCart } from "../../../features/cart/cart";
+import { formatPrice } from "../../../config";
 
 export const prerender = false;
 
@@ -15,23 +15,23 @@ export const prerender = false;
  * cart contents.
  */
 const ALLOWED_ORIGINS = new Set([
-  'https://ravecreations.art',
-  'https://www.ravecreations.art',
-  'http://localhost:4327', // marketing-site dev server
+  "https://ravecreations.art",
+  "https://www.ravecreations.art",
+  "http://localhost:4327", // marketing-site dev server
 ]);
 
 const corsHeaders = (origin: string | null): Record<string, string> =>
   origin && ALLOWED_ORIGINS.has(origin)
     ? {
-        'access-control-allow-origin': origin,
-        'access-control-allow-credentials': 'true',
-        'access-control-allow-methods': 'GET, OPTIONS',
-        vary: 'Origin',
+        "access-control-allow-origin": origin,
+        "access-control-allow-credentials": "true",
+        "access-control-allow-methods": "GET, OPTIONS",
+        vary: "Origin",
       }
-    : { vary: 'Origin' };
+    : { vary: "Origin" };
 
 export const OPTIONS: APIRoute = ({ request }) =>
-  new Response(null, { status: 204, headers: corsHeaders(request.headers.get('origin')) });
+  new Response(null, { status: 204, headers: corsHeaders(request.headers.get("origin")) });
 
 export const GET: APIRoute = async ({ request, cookies }) => {
   const cart = readCart(cookies);
@@ -41,8 +41,8 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     { count, subtotal: count > 0 ? formatPrice(subtotal) : null },
     {
       headers: {
-        ...corsHeaders(request.headers.get('origin')),
-        'cache-control': 'private, no-store',
+        ...corsHeaders(request.headers.get("origin")),
+        "cache-control": "private, no-store",
       },
     },
   );

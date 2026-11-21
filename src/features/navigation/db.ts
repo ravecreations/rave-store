@@ -1,17 +1,17 @@
-import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
-import { catalogPath, resolveHomePath } from '../settings/home.ts';
-import { withPublicId } from '../ids/publicId.ts';
+import type { D1Database, D1PreparedStatement } from "@cloudflare/workers-types";
+import { catalogPath, resolveHomePath } from "../settings/home.ts";
+import { withPublicId } from "../ids/publicId.ts";
 
-export type MenuLocation = 'header' | 'footer';
-export type MenuTargetType = 'home' | 'catalog' | 'page' | 'product' | 'category';
+export type MenuLocation = "header" | "footer";
+export type MenuTargetType = "home" | "catalog" | "page" | "product" | "category";
 
-export const MENU_LOCATIONS: readonly MenuLocation[] = ['header', 'footer'];
+export const MENU_LOCATIONS: readonly MenuLocation[] = ["header", "footer"];
 export const MENU_TARGET_TYPES: readonly MenuTargetType[] = [
-  'home',
-  'catalog',
-  'page',
-  'product',
-  'category',
+  "home",
+  "catalog",
+  "page",
+  "product",
+  "category",
 ];
 
 /**
@@ -34,9 +34,9 @@ export const MENU_CAPS: Record<MenuLocation, number> = { header: 6, footer: 50 }
  * admin tells the merchant what a blank label will fall back to, and that
  * promise has to match what the storefront actually renders.
  */
-export const SINGLETON_LABELS: Record<'home' | 'catalog', string> = {
-  home: 'Home',
-  catalog: 'Shop',
+export const SINGLETON_LABELS: Record<"home" | "catalog", string> = {
+  home: "Home",
+  catalog: "Shop",
 };
 
 /** Label overrides are merchant free text; bound it before it reaches the DOM. */
@@ -159,15 +159,15 @@ export function resolveMenuHref(
   homePage: string | null | undefined,
 ): string {
   switch (targetType) {
-    case 'home':
-      return '/';
-    case 'catalog':
+    case "home":
+      return "/";
+    case "catalog":
       return catalogPath(homePage);
-    case 'page':
+    case "page":
       return `/pages/${slug}`;
-    case 'product':
+    case "product":
       return `/products/${slug}`;
-    case 'category':
+    case "category":
       return `/categories/${slug}`;
   }
 }
@@ -182,7 +182,7 @@ export function toMenuItem(row: MenuItemRow, homePage: string | null | undefined
     targetId: row.target_id,
     position: row.position,
     label: row.label,
-    text: row.label ?? row.target_name ?? '',
+    text: row.label ?? row.target_name ?? "",
     targetName: row.target_name,
     href: resolveMenuHref(row.target_type, row.target_slug, homePage),
     available: row.available === 1,
@@ -197,14 +197,14 @@ export function groupMenus(rows: MenuItemRow[], homePage: string | null | undefi
   for (const row of rows) {
     const item = toMenuItem(row, homePage);
     // Defensive: a location outside the CHECK constraint would otherwise throw.
-    if (item.location === 'header' || item.location === 'footer') menus[item.location].push(item);
+    if (item.location === "header" || item.location === "footer") menus[item.location].push(item);
   }
   return menus;
 }
 
 /** Storefront view: unavailable targets are dropped, never rendered as dead links. */
 export function visibleItems(items: MenuItem[]): MenuItem[] {
-  return items.filter((i) => i.available && i.text !== '');
+  return items.filter((i) => i.available && i.text !== "");
 }
 
 export async function getMenus(
@@ -216,20 +216,20 @@ export async function getMenus(
 }
 
 export const isMenuLocation = (v: unknown): v is MenuLocation =>
-  typeof v === 'string' && (MENU_LOCATIONS as readonly string[]).includes(v);
+  typeof v === "string" && (MENU_LOCATIONS as readonly string[]).includes(v);
 
 export const isMenuTargetType = (v: unknown): v is MenuTargetType =>
-  typeof v === 'string' && (MENU_TARGET_TYPES as readonly string[]).includes(v);
+  typeof v === "string" && (MENU_TARGET_TYPES as readonly string[]).includes(v);
 
-export const isSingleton = (t: MenuTargetType): boolean => t === 'home' || t === 'catalog';
+export const isSingleton = (t: MenuTargetType): boolean => t === "home" || t === "catalog";
 
 /** Empty/blank overrides are stored as NULL so COALESCE does the fallback. */
 export function normalizeLabel(value: unknown): string | null {
-  const text = String(value ?? '').trim();
-  return text === '' ? null : text.slice(0, MAX_MENU_LABEL);
+  const text = String(value ?? "").trim();
+  return text === "" ? null : text.slice(0, MAX_MENU_LABEL);
 }
 
-export type AddFailure = 'full' | 'duplicate' | 'unavailable';
+export type AddFailure = "full" | "duplicate" | "unavailable";
 export type AddResult = { ok: true; id: number } | { ok: false; reason: AddFailure };
 
 /**
@@ -263,7 +263,7 @@ export async function addMenuItem(
   const cap = MENU_CAPS[location];
 
   try {
-    const result = await withPublicId('navItem', (publicId) =>
+    const result = await withPublicId("navItem", (publicId) =>
       db
         .prepare(
           `INSERT INTO menu_items (location, target_type, target_id, label, position, public_id)
@@ -291,7 +291,7 @@ export async function addMenuItem(
     // The backstop fired: another request inserted the same singleton between our
     // guard and our write. Same outcome as the guarded case, same message.
     if (/UNIQUE constraint failed/i.test(err instanceof Error ? err.message : String(err))) {
-      return { ok: false, reason: 'duplicate' };
+      return { ok: false, reason: "duplicate" };
     }
     throw err;
   }
@@ -309,16 +309,16 @@ async function diagnoseAddFailure(
 ): Promise<AddFailure> {
   if (isSingleton(targetType)) {
     const dupe = await db
-      .prepare('SELECT 1 AS x FROM menu_items WHERE location = ? AND target_type = ? LIMIT 1')
+      .prepare("SELECT 1 AS x FROM menu_items WHERE location = ? AND target_type = ? LIMIT 1")
       .bind(location, targetType)
       .first<{ x: number }>();
-    if (dupe) return 'duplicate';
+    if (dupe) return "duplicate";
   }
   const count = await db
-    .prepare('SELECT COUNT(*) AS c FROM menu_items WHERE location = ?')
+    .prepare("SELECT COUNT(*) AS c FROM menu_items WHERE location = ?")
     .bind(location)
     .first<{ c: number }>();
-  return (count?.c ?? 0) >= cap ? 'full' : 'unavailable';
+  return (count?.c ?? 0) >= cap ? "full" : "unavailable";
 }
 
 /** Menu-item row id for a nav_ public ID (boundary resolution; null if missing). */
@@ -327,7 +327,7 @@ export async function getMenuItemIdByPublicId(
   publicId: string,
 ): Promise<number | null> {
   const row = await db
-    .prepare('SELECT id FROM menu_items WHERE public_id = ?')
+    .prepare("SELECT id FROM menu_items WHERE public_id = ?")
     .bind(publicId)
     .first<{ id: number }>();
   return row?.id ?? null;
@@ -339,7 +339,7 @@ export async function menuItemIdsByPublicId(
   location: MenuLocation,
 ): Promise<Map<string, number>> {
   const { results } = await db
-    .prepare('SELECT id, public_id FROM menu_items WHERE location = ?')
+    .prepare("SELECT id, public_id FROM menu_items WHERE location = ?")
     .bind(location)
     .all<{ id: number; public_id: string | null }>();
   const map = new Map<string, number>();
@@ -350,7 +350,7 @@ export async function menuItemIdsByPublicId(
 }
 
 export async function removeMenuItem(db: D1Database, id: number): Promise<void> {
-  await db.prepare('DELETE FROM menu_items WHERE id = ?').bind(id).run();
+  await db.prepare("DELETE FROM menu_items WHERE id = ?").bind(id).run();
 }
 
 export async function setMenuItemLabel(
@@ -358,7 +358,7 @@ export async function setMenuItemLabel(
   id: number,
   label: string | null,
 ): Promise<void> {
-  await db.prepare('UPDATE menu_items SET label = ? WHERE id = ?').bind(label, id).run();
+  await db.prepare("UPDATE menu_items SET label = ? WHERE id = ?").bind(label, id).run();
 }
 
 /**
@@ -371,10 +371,10 @@ export async function setMenuItemLabel(
 export async function moveMenuItem(
   db: D1Database,
   id: number,
-  direction: 'up' | 'down',
+  direction: "up" | "down",
 ): Promise<void> {
   const item = await db
-    .prepare('SELECT id, location, position FROM menu_items WHERE id = ?')
+    .prepare("SELECT id, location, position FROM menu_items WHERE id = ?")
     .bind(id)
     .first<{ id: number; location: MenuLocation; position: number }>();
   if (!item) return;
@@ -383,7 +383,7 @@ export async function moveMenuItem(
   // one actually rendered next to it even when positions collide.
   const neighbour = await db
     .prepare(
-      direction === 'up'
+      direction === "up"
         ? `SELECT id, position FROM menu_items
             WHERE location = ?1 AND (position < ?2 OR (position = ?2 AND id < ?3))
             ORDER BY position DESC, id DESC LIMIT 1`
@@ -396,8 +396,8 @@ export async function moveMenuItem(
   if (!neighbour) return;
 
   await db.batch([
-    db.prepare('UPDATE menu_items SET position = ? WHERE id = ?').bind(neighbour.position, item.id),
-    db.prepare('UPDATE menu_items SET position = ? WHERE id = ?').bind(item.position, neighbour.id),
+    db.prepare("UPDATE menu_items SET position = ? WHERE id = ?").bind(neighbour.position, item.id),
+    db.prepare("UPDATE menu_items SET position = ? WHERE id = ?").bind(item.position, neighbour.id),
   ]);
 }
 
@@ -430,7 +430,7 @@ export async function reorderMenuItems(
   // same reason. Validated here rather than in the route, so the browser is not
   // the correctness boundary.
   const { results } = await db
-    .prepare('SELECT id FROM menu_items WHERE location = ?')
+    .prepare("SELECT id FROM menu_items WHERE location = ?")
     .bind(location)
     .all<{ id: number }>();
   const current = new Set((results ?? []).map((r) => r.id));
@@ -444,8 +444,8 @@ export async function reorderMenuItems(
   const statements: D1PreparedStatement[] = [];
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
-    const cases = chunk.map((_, j) => `WHEN ? THEN ${i + j}`).join(' ');
-    const placeholders = chunk.map(() => '?').join(', ');
+    const cases = chunk.map((_, j) => `WHEN ? THEN ${i + j}`).join(" ");
+    const placeholders = chunk.map(() => "?").join(", ");
     statements.push(
       db
         .prepare(

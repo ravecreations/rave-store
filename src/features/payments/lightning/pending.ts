@@ -1,6 +1,6 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import type { IncomingStatus } from './backend.ts';
-import type { PaidOrderInput, OrderItemInput, ShippingAddress } from '../../orders/db';
+import type { D1Database } from "@cloudflare/workers-types";
+import type { IncomingStatus } from "./backend.ts";
+import type { PaidOrderInput, OrderItemInput, ShippingAddress } from "../../orders/db";
 
 /**
  * Pending Lightning payments — the in-flight state between minting a BOLT11
@@ -47,7 +47,7 @@ export interface NewPendingPayment {
   shippingCents?: number;
   shippingLabel?: string | null;
   shippingWeightGrams?: number | null;
-  deliveryMethod?: 'pickup' | 'shipping' | null;
+  deliveryMethod?: "pickup" | "shipping" | null;
   /** Pre-serialized JSON ShippingAddress, or null. */
   shipAddressJson?: string | null;
   /** Inventory hold created with this payment; absent for legacy rows. */
@@ -58,8 +58,11 @@ export interface NewPendingPayment {
 /** Some nodes report the paid amount in addition to settlement status. */
 export function isPendingInvoicePaid(pending: PendingPayment, status: IncomingStatus): boolean {
   if (!status.paid) return false;
-  return pending.amount_sat == null || status.amountSat === undefined ||
-    (Number.isSafeInteger(status.amountSat) && status.amountSat >= pending.amount_sat);
+  return (
+    pending.amount_sat == null ||
+    status.amountSat === undefined ||
+    (Number.isSafeInteger(status.amountSat) && status.amountSat >= pending.amount_sat)
+  );
 }
 
 export async function createPendingPayment(db: D1Database, p: NewPendingPayment): Promise<void> {
@@ -95,7 +98,7 @@ export async function getPendingByPublicId(
   publicId: string,
 ): Promise<PendingPayment | null> {
   return db
-    .prepare('SELECT * FROM pending_payments WHERE public_id = ?')
+    .prepare("SELECT * FROM pending_payments WHERE public_id = ?")
     .bind(publicId)
     .first<PendingPayment>();
 }
@@ -105,7 +108,7 @@ export async function getPendingByHash(
   paymentHash: string,
 ): Promise<PendingPayment | null> {
   return db
-    .prepare('SELECT * FROM pending_payments WHERE payment_hash = ?')
+    .prepare("SELECT * FROM pending_payments WHERE payment_hash = ?")
     .bind(paymentHash)
     .first<PendingPayment>();
 }
@@ -163,7 +166,12 @@ export function pendingToPaidOrder(p: PendingPayment): PaidOrderInput {
     shippingCents: p.shipping_cents,
     shippingLabel: p.shipping_label,
     shippingWeightGrams: p.shipping_weight_grams,
-    deliveryMethod: p.delivery_method === 'pickup' ? 'pickup' : p.delivery_method === 'shipping' ? 'shipping' : null,
+    deliveryMethod:
+      p.delivery_method === "pickup"
+        ? "pickup"
+        : p.delivery_method === "shipping"
+          ? "shipping"
+          : null,
     shippingAddress,
     currency: p.currency,
     items,

@@ -36,7 +36,11 @@ describe("tenant API forwarding", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email: "owner@example.com" }),
       });
-      await tenantApiFetch(original, { R5I_TENANT_PUBLIC_KEY: `pk_${"b".repeat(32)}` }, "/admin/v1/auth/magic-link");
+      await tenantApiFetch(
+        original,
+        { R5I_TENANT_PUBLIC_KEY: `pk_${"b".repeat(32)}` },
+        "/admin/v1/auth/magic-link",
+      );
       const captured = fetcher.mock.calls[0]?.[0];
       expect(captured instanceof Request ? captured.url : captured?.toString()).toBe(
         "https://api.r5.industries/admin/v1/auth/magic-link",

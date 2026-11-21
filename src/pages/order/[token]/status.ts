@@ -1,39 +1,40 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { isAccessToken } from '../../../features/ids/token.ts';
-import { resolveAccessToken } from '../../../features/orders/guestAccess.ts';
-import { getOrderByPublicId, listOrderItems } from '../../../features/orders/db.ts';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
+import { isAccessToken } from "../../../features/ids/token.ts";
+import { resolveAccessToken } from "../../../features/orders/guestAccess.ts";
+import { getOrderByPublicId, listOrderItems } from "../../../features/orders/db.ts";
 import {
   expireSelfRenderedReservation,
   getReservationStatusSnapshot,
-} from '../../../features/orders/reservations.ts';
-import { purgeStockProductCache } from '../../../features/cache/purge.ts';
-import { isFullyRefunded } from '../../../features/orders/refundState';
+} from "../../../features/orders/reservations.ts";
+import { purgeStockProductCache } from "../../../features/cache/purge.ts";
+import { isFullyRefunded } from "../../../features/orders/refundState";
 
 export const prerender = false;
 
 const CORS = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, OPTIONS',
-  'access-control-allow-headers': 'content-type',
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, OPTIONS",
+  "access-control-allow-headers": "content-type",
 };
 const headers = {
   ...CORS,
-  'content-type': 'application/json; charset=utf-8',
-  'cache-control': 'private, no-store',
-  'referrer-policy': 'no-referrer',
+  "content-type": "application/json; charset=utf-8",
+  "cache-control": "private, no-store",
+  "referrer-policy": "no-referrer",
 };
 
 export const OPTIONS: APIRoute = () =>
-  new Response(null, { status: 204, headers: { ...CORS, 'cache-control': 'private, no-store' } });
+  new Response(null, { status: 204, headers: { ...CORS, "cache-control": "private, no-store" } });
 
 export const GET: APIRoute = async ({ params, request }) => {
   const token = params.token;
   if (!token || !isAccessToken(token)) {
-    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers });
+    return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers });
   }
   const access = await resolveAccessToken(env.DB, token);
-  if (!access) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers });
+  if (!access)
+    return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers });
 
   const order = await getOrderByPublicId(env.DB, access.order_public_id);
   if (order) {
@@ -42,7 +43,7 @@ export const GET: APIRoute = async ({ params, request }) => {
     const base = new URL(request.url).origin;
     return new Response(
       JSON.stringify({
-        status: fullyRefunded ? 'refunded' : 'paid',
+        status: fullyRefunded ? "refunded" : "paid",
         order_id: order.public_id,
         currency: order.currency.toUpperCase(),
         items: items.map((item) => ({
@@ -60,23 +61,24 @@ export const GET: APIRoute = async ({ params, request }) => {
   }
 
   if (access.hidden_at) {
-    return new Response(JSON.stringify({ error: 'Checkout status is no longer visible.' }), {
+    return new Response(JSON.stringify({ error: "Checkout status is no longer visible." }), {
       status: 410,
       headers,
     });
   }
   await expireSelfRenderedReservation(env.DB, access.order_public_id, purgeStockProductCache);
   const reservation = await getReservationStatusSnapshot(env.DB, access.order_public_id);
-  if (!reservation || reservation.status === 'settled') {
-    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers });
+  if (!reservation || reservation.status === "settled") {
+    return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers });
   }
-  if (reservation.status === 'released') {
-    return new Response(JSON.stringify({ error: 'Checkout is no longer payable.' }), {
+  if (reservation.status === "released") {
+    return new Response(JSON.stringify({ error: "Checkout is no longer payable." }), {
       status: 410,
       headers,
     });
   }
-  const status = reservation.status === 'expired' || reservation.status === 'failed' ? 'expired' : 'confirming';
+  const status =
+    reservation.status === "expired" || reservation.status === "failed" ? "expired" : "confirming";
   return new Response(
     JSON.stringify({
       status,

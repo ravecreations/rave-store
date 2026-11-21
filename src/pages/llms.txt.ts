@@ -1,21 +1,21 @@
-import { markdownExcerpt } from '../features/pages/markdown.ts';
-import type { APIRoute } from 'astro';
-import { PUBLIC_CACHE_CONTROL } from '../features/cache/public';
-import { env } from 'cloudflare:workers';
-import { getConfig, formatPrice } from '../config';
-import { listProducts, countProducts } from '../features/products/db';
-import { listCategories } from '../features/categories/db';
-import { listPublishedPages } from '../features/pages/db';
-import { publicOrigin } from '../features/http/origin';
+import { markdownExcerpt } from "../features/pages/markdown.ts";
+import type { APIRoute } from "astro";
+import { PUBLIC_CACHE_CONTROL } from "../features/cache/public";
+import { env } from "cloudflare:workers";
+import { getConfig, formatPrice } from "../config";
+import { listProducts, countProducts } from "../features/products/db";
+import { listCategories } from "../features/categories/db";
+import { listPublishedPages } from "../features/pages/db";
+import { publicOrigin } from "../features/http/origin";
 
 export const prerender = false;
 
 // Markdown link text can't contain unescaped brackets; product names are free
 // text, so strip brackets and collapse whitespace. Slugs are URL-safe already.
-const linkText = (s: string) => s.replace(/[[\]]/g, '').replace(/\s+/g, ' ').trim();
+const linkText = (s: string) => s.replace(/[[\]]/g, "").replace(/\s+/g, " ").trim();
 const oneLine = (s: string | null, max = 100) => {
-  if (!s) return '';
-  const t = s.replace(/\s+/g, ' ').trim();
+  if (!s) return "";
+  const t = s.replace(/\s+/g, " ").trim();
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 };
 
@@ -36,7 +36,7 @@ export const GET: APIRoute = async ({ url }) => {
     // This whole-catalog response carries coarse tags, so checkout-frequency
     // product-tag purges cannot keep stock honest here. Omit availability; the
     // catalog API and checkout resolve it through product-scoped/live reads.
-    return `- [${linkText(p.name)}](${origin}/products/${p.slug}): ${formatPrice(p.price_cents, currency)}${desc ? ` — ${desc}` : ''}`;
+    return `- [${linkText(p.name)}](${origin}/products/${p.slug}): ${formatPrice(p.price_cents, currency)}${desc ? ` — ${desc}` : ""}`;
   });
 
   const categoryLines = categories.map(
@@ -52,21 +52,21 @@ export const GET: APIRoute = async ({ url }) => {
   // database, not a config — and many instances never deploy it. So it is
   // advertised only when MCP_URL is set; unset means llms.txt says nothing,
   // rather than pointing agents at an endpoint that does not exist.
-  const mcpUrl = (env.MCP_URL ?? '').trim();
+  const mcpUrl = (env.MCP_URL ?? "").trim();
   const mcpLine = mcpUrl
     ? `\n- [Model Context Protocol endpoint](${mcpUrl}): streamable HTTP. Browse and purchase need no credentials — \`browse_products\`, \`get_product_details\`, \`payment_methods\`, \`create_checkout\`, \`check_order_status\`. Same checkout as the JSON endpoints above.`
-    : '';
+    : "";
 
   const body = `# ${storeName}
 
 > ${storeName} is an online store you can browse and purchase from programmatically. All prices are in ${currency.toUpperCase()}. This file follows the llms.txt convention (https://llmstxt.org). Catalog and category links are live; an agent can complete a purchase via the JSON checkout endpoint under "For agents".
 
 ## Products
-${productLines.length > 0 ? productLines.join('\n') : '- (no products listed)'}
+${productLines.length > 0 ? productLines.join("\n") : "- (no products listed)"}
 
 ## Categories
-${categoryLines.length > 0 ? categoryLines.join('\n') : '- (no categories)'}
-${pageLines.length > 0 ? `\n## Pages\n${pageLines.join('\n')}\n` : ''}
+${categoryLines.length > 0 ? categoryLines.join("\n") : "- (no categories)"}
+${pageLines.length > 0 ? `\n## Pages\n${pageLines.join("\n")}\n` : ""}
 ## For agents
 - [List payment methods](${origin}/api/checkout): \`GET\` → \`{ available_methods, default }\`.
 - [Browse the catalog as JSON](${origin}/api/products): \`GET\` (\`?q=\`, \`?limit=\`, \`?offset=\`) → products with prefixed public IDs (\`id: "prod_…"\`; the detail route \`/api/products/<slug>\` adds variants \`var_…\` and extras \`xtra_…\`).
@@ -77,8 +77,8 @@ ${pageLines.length > 0 ? `\n## Pages\n${pageLines.join('\n')}\n` : ''}
 
   return new Response(body, {
     headers: {
-      'content-type': 'text/plain; charset=utf-8',
-      'cache-control': PUBLIC_CACHE_CONTROL,
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": PUBLIC_CACHE_CONTROL,
     },
   });
 };

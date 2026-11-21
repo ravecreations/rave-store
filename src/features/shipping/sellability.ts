@@ -7,7 +7,7 @@
  * has, so ordinary product saves never pay for it.
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database } from "@cloudflare/workers-types";
 
 /**
  * Active, shippable products with at least one PURCHASABLE choice whose resolved
@@ -38,12 +38,9 @@ export async function countProductsMissingWeight(db: D1Database): Promise<number
 }
 
 /** A few names for the error message, so the merchant knows where to start. */
-export async function sampleProductsMissingWeight(
-  db: D1Database,
-  limit = 5,
-): Promise<string[]> {
+export async function sampleProductsMissingWeight(db: D1Database, limit = 5): Promise<string[]> {
   const { results } = await db
-    .prepare(`${MISSING_WEIGHT_SQL.replace('COUNT(*) AS n', 'p.name')} ORDER BY p.name LIMIT ?`)
+    .prepare(`${MISSING_WEIGHT_SQL.replace("COUNT(*) AS n", "p.name")} ORDER BY p.name LIMIT ?`)
     .bind(limit)
     .all<{ name: string }>();
   return (results ?? []).map((r) => r.name);

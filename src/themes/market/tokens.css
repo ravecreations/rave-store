@@ -33,13 +33,12 @@
   --color-on-brand: #ffffff;
 
   /* System stacks only — no remote font is required to render. */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    Helvetica, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif;
   /* Numbers and identifiers. The characterful choice in this design is the
      monospace, not a display face — so `font-serif` carries the mono stack and
      every price, SKU, and page number uses it. */
-  --font-serif: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas,
-    'Liberation Mono', monospace;
+  --font-serif:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Square. 2px only where a control would otherwise look broken. */
   --radius-md: 2px;

@@ -1,4 +1,4 @@
-import type { EmailProvider, EmailMessage } from './provider';
+import type { EmailProvider, EmailMessage } from "./provider";
 
 /** Minimal shape of the Cloudflare `send_email` binding we use. */
 export interface EmailBinding {

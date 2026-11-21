@@ -1,13 +1,13 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { getProductBySlug } from '../../../features/products/db';
-import { listVariants, listExtras } from '../../../features/products/variants';
-import { categoriesForProduct } from '../../../features/categories/db';
-import { toCatalogProduct } from '../../../features/catalog/serialize';
-import { catalogJson, catalogPreflight } from '../../../features/catalog/http';
-import { getConfig } from '../../../config';
-import { publicOrigin } from '../../../features/http/origin';
-import { addCacheTags, productCacheTags } from '../../../features/cache/tags';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
+import { getProductBySlug } from "../../../features/products/db";
+import { listVariants, listExtras } from "../../../features/products/variants";
+import { categoriesForProduct } from "../../../features/categories/db";
+import { toCatalogProduct } from "../../../features/catalog/serialize";
+import { catalogJson, catalogPreflight } from "../../../features/catalog/http";
+import { getConfig } from "../../../config";
+import { publicOrigin } from "../../../features/http/origin";
+import { addCacheTags, productCacheTags } from "../../../features/cache/tags";
 
 export const prerender = false;
 
@@ -18,7 +18,7 @@ export const OPTIONS: APIRoute = () => catalogPreflight();
 export const GET: APIRoute = async ({ params, url }) => {
   const product = params.slug ? await getProductBySlug(env.DB, params.slug) : null;
   if (!product || product.active !== 1) {
-    return catalogJson({ error: 'Product not found' }, 404);
+    return catalogJson({ error: "Product not found" }, 404);
   }
   const [cats, variants, extras] = await Promise.all([
     categoriesForProduct(env.DB, product.id),

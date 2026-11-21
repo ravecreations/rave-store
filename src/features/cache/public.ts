@@ -1,24 +1,24 @@
-export const PUBLIC_CACHE_CONTROL = 'public, max-age=0, s-maxage=600';
-export const PRIVATE_CACHE_CONTROL = 'private, no-store';
+export const PUBLIC_CACHE_CONTROL = "public, max-age=0, s-maxage=600";
+export const PRIVATE_CACHE_CONTROL = "private, no-store";
 
 export function isPublicCatalogApi(pathname: string): boolean {
-  return pathname === '/api/products' || pathname.startsWith('/api/products/');
+  return pathname === "/api/products" || pathname.startsWith("/api/products/");
 }
 
 /** Storefront routes whose HTML is identical for every shopper. */
 export function isPublicStorefrontPath(pathname: string): boolean {
   return (
-    pathname === '/' ||
-    pathname === '/products' ||
-    pathname.startsWith('/product/') ||
-    pathname === '/search' ||
-    pathname.startsWith('/products/') ||
-    pathname.startsWith('/category/') ||
-    pathname.startsWith('/categories/') ||
-    pathname.startsWith('/pages/') ||
-    pathname === '/robots.txt' ||
-    pathname === '/sitemap.xml' ||
-    pathname === '/llms.txt'
+    pathname === "/" ||
+    pathname === "/products" ||
+    pathname.startsWith("/product/") ||
+    pathname === "/search" ||
+    pathname.startsWith("/products/") ||
+    pathname.startsWith("/category/") ||
+    pathname.startsWith("/categories/") ||
+    pathname.startsWith("/pages/") ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/llms.txt"
   );
 }
 
@@ -29,27 +29,27 @@ export function isPublicStorefrontPath(pathname: string): boolean {
  */
 export function isPrivatePath(pathname: string): boolean {
   return (
-    pathname === '/admin' ||
-    pathname.startsWith('/admin/') ||
-    pathname === '/api/admin' ||
-    pathname.startsWith('/api/admin/') ||
-    pathname === '/api/internal' ||
-    pathname.startsWith('/api/internal/') ||
-    pathname === '/account' ||
-    pathname.startsWith('/account/') ||
-    pathname === '/order' ||
-    pathname.startsWith('/order/') ||
-    pathname === '/pay' ||
-    pathname.startsWith('/pay/') ||
-    pathname === '/payment-setup' ||
-    pathname.startsWith('/payment-setup/') ||
-    pathname === '/partials' ||
-    pathname.startsWith('/partials/') ||
-    pathname === '/express' ||
-    pathname === '/cart' ||
-    pathname === '/checkout' ||
-    pathname === '/api/cart' ||
-    pathname === '/api/checkout'
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/api/admin" ||
+    pathname.startsWith("/api/admin/") ||
+    pathname === "/api/internal" ||
+    pathname.startsWith("/api/internal/") ||
+    pathname === "/account" ||
+    pathname.startsWith("/account/") ||
+    pathname === "/order" ||
+    pathname.startsWith("/order/") ||
+    pathname === "/pay" ||
+    pathname.startsWith("/pay/") ||
+    pathname === "/payment-setup" ||
+    pathname.startsWith("/payment-setup/") ||
+    pathname === "/partials" ||
+    pathname.startsWith("/partials/") ||
+    pathname === "/express" ||
+    pathname === "/cart" ||
+    pathname === "/checkout" ||
+    pathname === "/api/cart" ||
+    pathname === "/api/checkout"
   );
 }
 

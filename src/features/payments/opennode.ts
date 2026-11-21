@@ -1,17 +1,13 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database } from "@cloudflare/workers-types";
 import type {
   PaymentProvider,
   CreateCheckoutParams,
   CheckoutResult,
   WebhookResult,
-} from './provider';
-import { OPENNODE_CHECKOUT_TTL_SECONDS, WebhookLookupError } from './provider';
-import {
-  createPendingPayment,
-  getPendingByHash,
-  pendingToPaidOrder,
-} from './lightning/pending';
-import { toMajorUnits } from '../../money';
+} from "./provider";
+import { OPENNODE_CHECKOUT_TTL_SECONDS, WebhookLookupError } from "./provider";
+import { createPendingPayment, getPendingByHash, pendingToPaidOrder } from "./lightning/pending";
+import { toMajorUnits } from "../../money";
 
 /**
  * OpenNode — hosted Lightning checkout (custodial processor). Behaves like Stripe:
@@ -22,18 +18,18 @@ import { toMajorUnits } from '../../money';
  * pending_payments keyed by the charge id and read it back on settlement.
  * Webhooks are verified by HMAC: `hashed_order == HMAC-SHA256(api_key, id)`.
  */
-const DEFAULT_BASE = 'https://api.opennode.com';
+const DEFAULT_BASE = "https://api.opennode.com";
 
 async function hmacSha256Hex(key: string, message: string): Promise<string> {
   const k = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     new TextEncoder().encode(key),
-    { name: 'HMAC', hash: 'SHA-256' },
+    { name: "HMAC", hash: "SHA-256" },
     false,
-    ['sign'],
+    ["sign"],
   );
-  const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(message));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const sig = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(message));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function createOpenNodeProvider(
@@ -41,11 +37,11 @@ export function createOpenNodeProvider(
   apiKey: string,
   baseUrl: string = DEFAULT_BASE,
 ): PaymentProvider {
-  const base = baseUrl.replace(/\/+$/, '');
+  const base = baseUrl.replace(/\/+$/, "");
 
   return {
     async createCheckout(params: CreateCheckoutParams): Promise<CheckoutResult> {
-      const currency = params.lineItems[0]?.currency ?? 'usd';
+      const currency = params.lineItems[0]?.currency ?? "usd";
       // Shipping is charged only when the in-app step already priced it against a
       // submitted address; the hosted OpenNode page cannot collect one.
       const shippingCents = params.selectedShipping?.amountCents ?? 0;
@@ -55,8 +51,8 @@ export function createOpenNodeProvider(
       const publicId = params.metadata?.public_id ?? crypto.randomUUID();
 
       const res = await fetch(`${base}/v1/charges`, {
-        method: 'POST',
-        headers: { Authorization: apiKey, 'content-type': 'application/json' },
+        method: "POST",
+        headers: { Authorization: apiKey, "content-type": "application/json" },
         body: JSON.stringify({
           amount: toMajorUnits(totalCents, currency), // OpenNode wants the fiat main-unit amount (currency-scaled)
           currency: currency.toUpperCase(),
@@ -78,13 +74,13 @@ export function createOpenNodeProvider(
       };
       const id = j.data?.id;
       const url = j.data?.hosted_checkout_url;
-      if (!id || !url) throw new Error('OpenNode: malformed charge response');
+      if (!id || !url) throw new Error("OpenNode: malformed charge response");
 
       // Stash the cart snapshot — OpenNode's webhook won't return it.
       await createPendingPayment(db, {
         publicId,
         paymentHash: id, // charge id is the settlement key for OpenNode
-        backend: 'opennode',
+        backend: "opennode",
         bolt11: null,
         amountSat: null,
         amountTotalCents: totalCents,
@@ -108,16 +104,16 @@ export function createOpenNodeProvider(
     async verifyWebhook(payload: string): Promise<WebhookResult> {
       // OpenNode posts application/x-www-form-urlencoded.
       const form = new URLSearchParams(payload);
-      const id = form.get('id');
-      const hashedOrder = form.get('hashed_order');
-      if (!id || !hashedOrder) throw new Error('OpenNode: webhook missing id/hashed_order');
+      const id = form.get("id");
+      const hashedOrder = form.get("hashed_order");
+      if (!id || !hashedOrder) throw new Error("OpenNode: webhook missing id/hashed_order");
 
       const expected = await hmacSha256Hex(apiKey, id);
       if (hashedOrder.toLowerCase() !== expected) {
-        throw new Error('OpenNode: bad webhook signature');
+        throw new Error("OpenNode: bad webhook signature");
       }
       const pending = await getPendingByHash(db, id);
-      if (pending?.backend !== 'opennode') return { type: 'opennode.unknown' };
+      if (pending?.backend !== "opennode") return { type: "opennode.unknown" };
 
       // The callback authenticates the charge ID only. Confirm the current
       // status directly before either settling payment or releasing stock.
@@ -125,26 +121,27 @@ export function createOpenNodeProvider(
       try {
         const response = await fetch(`${base}/v2/charge/${encodeURIComponent(id)}`, {
           headers: { Authorization: apiKey },
-          redirect: 'error',
+          redirect: "error",
         });
         if (!response.ok) throw new Error(`Charge lookup returned ${response.status}`);
         const { data } = await response.json<{ data?: { id?: string; status?: string } }>();
-        if (data?.id !== id || typeof data.status !== 'string') {
-          throw new Error('Malformed charge lookup response');
+        if (data?.id !== id || typeof data.status !== "string") {
+          throw new Error("Malformed charge lookup response");
         }
         status = data.status;
       } catch (cause) {
-        throw new WebhookLookupError('OpenNode charge lookup unavailable', { cause });
+        throw new WebhookLookupError("OpenNode charge lookup unavailable", { cause });
       }
 
-      if (status !== 'paid') {
+      if (status !== "paid") {
         return {
           type: `opennode.${status}`,
-          releaseReservationId: status === 'expired' ? pending.reservation_id ?? undefined : undefined,
+          releaseReservationId:
+            status === "expired" ? (pending.reservation_id ?? undefined) : undefined,
         };
       }
       return {
-        type: 'opennode.paid',
+        type: "opennode.paid",
         settlePendingPaymentId: id,
         order: pendingToPaidOrder(pending),
       };

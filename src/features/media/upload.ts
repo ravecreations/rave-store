@@ -1,9 +1,9 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import type { StorageProvider } from '../storage';
+import type { D1Database } from "@cloudflare/workers-types";
+import type { StorageProvider } from "../storage";
 // Explicit .ts: test/integration/media.mjs loads this module through Node's type
 // stripping, which does not resolve extensionless relative imports.
-import { createMediaRecord, type Media } from './db.ts';
-import { readImageDimensions } from './dimensions.ts';
+import { createMediaRecord, type Media } from "./db.ts";
+import { readImageDimensions } from "./dimensions.ts";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -12,19 +12,19 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
  * origin, and an SVG is a script-execution vector there.
  */
 const ALLOWED = new Map([
-  ['image/jpeg', 'jpg'],
-  ['image/png', 'png'],
-  ['image/webp', 'webp'],
-  ['image/gif', 'gif'],
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+  ["image/gif", "gif"],
 ]);
 
 /** Returns a user-facing error string if the upload is invalid, else null. */
 export function validateUpload(file: File): string | null {
   if (!ALLOWED.has(file.type)) {
-    return 'Image must be JPEG, PNG, WebP, or GIF.';
+    return "Image must be JPEG, PNG, WebP, or GIF.";
   }
   if (file.size > MAX_BYTES) {
-    return 'Image must be 5 MB or smaller.';
+    return "Image must be 5 MB or smaller.";
   }
   return null;
 }
@@ -51,9 +51,9 @@ export function validateUpload(file: File): string | null {
  * fix is never retroactive.
  */
 export function mediaKeyFor(file: File): string {
-  const ext = ALLOWED.get(file.type) ?? 'bin';
+  const ext = ALLOWED.get(file.type) ?? "bin";
   const id = crypto.getRandomValues(new Uint8Array(10));
-  return `media/${[...id].map((b) => b.toString(16).padStart(2, '0')).join('')}.${ext}`;
+  return `media/${[...id].map((b) => b.toString(16).padStart(2, "0")).join("")}.${ext}`;
 }
 
 /**
@@ -95,7 +95,7 @@ export async function uploadMedia(
       // so it can be swept manually rather than failing the request twice.
       console.error(
         JSON.stringify({
-          event: 'media_orphan_after_failed_insert',
+          event: "media_orphan_after_failed_insert",
           key,
           message: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr),
         }),

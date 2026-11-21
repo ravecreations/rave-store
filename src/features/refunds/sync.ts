@@ -6,22 +6,22 @@
 // is never made to retry a perfectly valid event forever. Only a failure to
 // persist is worth a 500 — that is the one case where a retry helps.
 
-import type { RefundSyncInput } from '../payments/provider';
+import type { RefundSyncInput } from "../payments/provider";
 // Explicit .ts extension: this module is imported directly by
 // test/integration/refunds.mjs under node's type stripping, which does not resolve
 // extensionless relative paths. allowImportingTsExtensions is on, so Vite and
 // astro check both accept it.
-import { syncProviderRefund, openRefundReview, openReviewIfOverRefunded } from './db.ts';
+import { syncProviderRefund, openRefundReview, openReviewIfOverRefunded } from "./db.ts";
 
 export type SyncOutcome =
   /** Applied; `deltaCents` is how much the provider total advanced by. */
-  | { status: 'processed'; orderId: number; deltaCents: number; fullyRefunded: boolean }
+  | { status: "processed"; orderId: number; deltaCents: number; fullyRefunded: boolean }
   /** Valid, already known — a duplicate or out-of-order event. */
-  | { status: 'no_change'; orderId: number }
+  | { status: "no_change"; orderId: number }
   /** Valid but not correlated to an order yet; kept for reconciliation. */
-  | { status: 'unmatched' }
+  | { status: "unmatched" }
   /** Correlated but conflicting; the order is flagged and totals untouched. */
-  | { status: 'review'; orderId: number; reason: string };
+  | { status: "review"; orderId: number; reason: string };
 
 /**
  * Persist a verified refund event. Idempotent on the provider's event id, so a
@@ -134,25 +134,29 @@ export async function applyRefundEvent(
       }
     } catch (err) {
       // A provider outage must not lose the event. It stays queued for Retry.
-      console.error('Refund correlation lookup failed:', err);
+      console.error("Refund correlation lookup failed:", err);
     }
   }
 
   if (!order) {
     // Still uncorrelated: keep the event for the admin reconciliation queue
     // rather than losing a refund that really happened.
-    await markEvent(db, input.eventId, 'unmatched');
-    return { status: 'unmatched' };
+    await markEvent(db, input.eventId, "unmatched");
+    return { status: "unmatched" };
   }
 
   // A refund in a different currency than the order was taken in means the
   // event and the order disagree about what was actually charged. Adding the
   // number anyway would silently corrupt the total, so flag it and touch nothing.
-  if (input.currency && order.currency && input.currency.toLowerCase() !== order.currency.toLowerCase()) {
-    const reason = 'currency_mismatch';
+  if (
+    input.currency &&
+    order.currency &&
+    input.currency.toLowerCase() !== order.currency.toLowerCase()
+  ) {
+    const reason = "currency_mismatch";
     await openRefundReview(db, order.id, reason);
-    await markEvent(db, input.eventId, 'failed', reason);
-    return { status: 'review', orderId: order.id, reason };
+    await markEvent(db, input.eventId, "failed", reason);
+    return { status: "review", orderId: order.id, reason };
   }
 
   const result = await syncProviderRefund(db, {
@@ -167,22 +171,22 @@ export async function applyRefundEvent(
     // The event id is the idempotency boundary; the charge is already recorded
     // on the refund_sync_events row.
     providerEventId: input.eventId,
-    reason: 'Synchronised from a provider refund event',
+    reason: "Synchronised from a provider refund event",
   });
 
   if (!result.ok) {
-    await markEvent(db, input.eventId, 'unmatched');
-    return { status: 'unmatched' };
+    await markEvent(db, input.eventId, "unmatched");
+    return { status: "unmatched" };
   }
 
-  await markEvent(db, input.eventId, 'processed');
+  await markEvent(db, input.eventId, "processed");
 
   const conflict = await openReviewIfOverRefunded(db, order.id);
-  if (conflict) return { status: 'review', orderId: order.id, reason: conflict };
+  if (conflict) return { status: "review", orderId: order.id, reason: conflict };
 
-  if (!result.advanced) return { status: 'no_change', orderId: order.id };
+  if (!result.advanced) return { status: "no_change", orderId: order.id };
   return {
-    status: 'processed',
+    status: "processed",
     orderId: order.id,
     deltaCents: result.deltaCents,
     fullyRefunded: result.fullyRefunded,

@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 
-import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { signDeployPurgeAuthorization } from '../src/features/cache/deployPurgeAuth.ts';
-import { resolveTheme } from './themes.mjs';
-import { executeDeployPlan } from './deploy-plan.mjs';
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { signDeployPurgeAuthorization } from "../src/features/cache/deployPurgeAuth.ts";
+import { resolveTheme } from "./themes.mjs";
+import { executeDeployPlan } from "./deploy-plan.mjs";
 
-const root = resolve(import.meta.dirname, '..');
+const root = resolve(import.meta.dirname, "..");
 const args = process.argv.slice(2);
-const skipBuild = args.includes('--skip-build');
-const preflightOnly = args.includes('--preflight-only');
-const generatedConfigPath = resolve(root, 'dist/server/wrangler.json');
-const stampPath = resolve(root, 'dist/theme.json');
+const skipBuild = args.includes("--skip-build");
+const preflightOnly = args.includes("--preflight-only");
+const generatedConfigPath = resolve(root, "dist/server/wrangler.json");
+const stampPath = resolve(root, "dist/theme.json");
 
 // FIRST, before anything mutates remote state: fail on a broken or missing
 // theme selection. resolveTheme only reads — a bad config used
@@ -20,12 +20,11 @@ const stampPath = resolve(root, 'dist/theme.json');
 const theme = resolveTheme(root);
 console.log(`Deploying theme: ${theme.id} (from ${theme.source})`);
 
-
 function run(command, args) {
   const result = spawnSync(command, args, {
     cwd: root,
     env: process.env,
-    stdio: 'inherit',
+    stdio: "inherit",
   });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
@@ -34,63 +33,58 @@ function run(command, args) {
 function parseDevVars(path) {
   if (!existsSync(path)) return {};
   const values = {};
-  for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
     if (!match) continue;
     const [, name, raw] = match;
     const quoted =
       raw.length >= 2 &&
-      ((raw.startsWith('"') && raw.endsWith('"')) ||
-        (raw.startsWith("'") && raw.endsWith("'")));
+      ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'")));
     values[name] = quoted ? raw.slice(1, -1) : raw;
   }
   return values;
 }
 
 function deploySecret() {
-  const devVars = parseDevVars(resolve(root, '.dev.vars'));
-  return process.env.CACHE_PURGE_SECRET ||
+  const devVars = parseDevVars(resolve(root, ".dev.vars"));
+  return (
+    process.env.CACHE_PURGE_SECRET ||
     devVars.CACHE_PURGE_SECRET ||
     process.env.AUTH_SECRET ||
     devVars.AUTH_SECRET ||
-    '';
+    ""
+  );
 }
 
 function deploymentCacheConfig() {
   if (!existsSync(generatedConfigPath)) {
-    throw new Error(
-      'Missing dist/server/wrangler.json. Run a build or omit --skip-build.',
-    );
+    throw new Error("Missing dist/server/wrangler.json. Run a build or omit --skip-build.");
   }
-  const config = JSON.parse(readFileSync(generatedConfigPath, 'utf8'));
-  const crossVersion = config.cache?.enabled === true &&
-    config.cache?.cross_version_cache === true;
+  const config = JSON.parse(readFileSync(generatedConfigPath, "utf8"));
+  const crossVersion = config.cache?.enabled === true && config.cache?.cross_version_cache === true;
   if (!crossVersion) return { crossVersion: false };
 
   const origin = config.vars?.CANONICAL_ORIGIN;
   if (
-    typeof origin !== 'string' ||
-    !origin.startsWith('https://') ||
+    typeof origin !== "string" ||
+    !origin.startsWith("https://") ||
     new URL(origin).origin !== origin
   ) {
-    throw new Error(
-      'cross_version_cache requires CANONICAL_ORIGIN to be one exact HTTPS origin.',
-    );
+    throw new Error("cross_version_cache requires CANONICAL_ORIGIN to be one exact HTTPS origin.");
   }
   if (config.workers_dev !== false) {
-    throw new Error('cross_version_cache requires workers_dev: false.');
+    throw new Error("cross_version_cache requires workers_dev: false.");
   }
   const secret = deploySecret();
   if (!secret) {
     throw new Error(
-      'cross_version_cache requires CACHE_PURGE_SECRET (or legacy AUTH_SECRET) in the deploy environment or .dev.vars.',
+      "cross_version_cache requires CACHE_PURGE_SECRET (or legacy AUTH_SECRET) in the deploy environment or .dev.vars.",
     );
   }
   return { crossVersion: true, origin, secret };
 }
 
-const wait = (milliseconds) =>
-  new Promise((resolveWait) => setTimeout(resolveWait, milliseconds));
+const wait = (milliseconds) => new Promise((resolveWait) => setTimeout(resolveWait, milliseconds));
 
 async function purgeAfterDeploy(origin, secret) {
   // The custom domain can briefly continue routing to the previous version
@@ -99,21 +93,18 @@ async function purgeAfterDeploy(origin, secret) {
   const delays = [0, 2_000, 5_000, 10_000, 20_000];
   for (let attempt = 0; attempt < delays.length; attempt++) {
     if (delays[attempt] > 0) await wait(delays[attempt]);
-    const authorization = await signDeployPurgeAuthorization(
-      secret,
-      Date.now() / 1000,
-    );
+    const authorization = await signDeployPurgeAuthorization(secret, Date.now() / 1000);
     try {
       const response = await fetch(`${origin}/api/internal/cache-purge`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           authorization,
-          'content-type': 'application/json',
+          "content-type": "application/json",
         },
-        body: '{}',
+        body: "{}",
       });
       if (response.ok) {
-        console.log('✓ Cross-version Worker cache purged.');
+        console.log("✓ Cross-version Worker cache purged.");
         return;
       }
       console.error(
@@ -130,10 +121,10 @@ async function purgeAfterDeploy(origin, secret) {
 
   throw new Error(
     [
-      'The new Worker version is live, but its cross-version cache could not be purged.',
-      'Retry this deploy first. If purging still fails, set cache.cross_version_cache',
-      'to false and deploy again so the Worker returns to a cold version-keyed cache.',
-    ].join(' '),
+      "The new Worker version is live, but its cross-version cache could not be purged.",
+      "Retry this deploy first. If purging still fails, set cache.cross_version_cache",
+      "to false and deploy again so the Worker returns to a cold version-keyed cache.",
+    ].join(" "),
   );
 }
 
@@ -145,11 +136,11 @@ async function purgeAfterDeploy(origin, secret) {
 // is the regression that split exists to prevent.
 const ops = {
   expectedTheme: theme.id,
-  readStamp: () => (existsSync(stampPath) ? readFileSync(stampPath, 'utf8') : null),
-  build: () => run('npx', ['astro', 'build']),
+  readStamp: () => (existsSync(stampPath) ? readFileSync(stampPath, "utf8") : null),
+  build: () => run("npx", ["astro", "build"]),
   loadCacheConfig: () => deploymentCacheConfig(),
-  migrate: () => run('npx', ['wrangler', 'd1', 'migrations', 'apply', 'DB', '--remote']),
-  deploy: () => run('npx', ['wrangler', 'deploy']),
+  migrate: () => run("npx", ["wrangler", "d1", "migrations", "apply", "DB", "--remote"]),
+  deploy: () => run("npx", ["wrangler", "deploy"]),
   purge: (cacheConfig) => purgeAfterDeploy(cacheConfig.origin, cacheConfig.secret),
 };
 
@@ -158,8 +149,8 @@ try {
   if (preflightOnly) {
     console.log(
       cacheConfig.crossVersion
-        ? '✓ Cross-version cache deployment preflight passed.'
-        : '✓ Deployment preflight passed; cross-version caching is disabled.',
+        ? "✓ Cross-version cache deployment preflight passed."
+        : "✓ Deployment preflight passed; cross-version caching is disabled.",
     );
   }
 } catch (error) {

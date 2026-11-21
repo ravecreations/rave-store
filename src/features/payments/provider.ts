@@ -1,4 +1,4 @@
-import type { PaidOrderInput, ShippingAddress } from '../orders/db';
+import type { PaidOrderInput, ShippingAddress } from "../orders/db";
 
 /** Keep anonymous hosted inventory holds short and aligned with provider expiry. */
 export const STRIPE_CHECKOUT_TTL_SECONDS = 30 * 60;
@@ -68,7 +68,7 @@ export interface CreateCheckoutParams {
     weightGrams: number | null;
     /** How the order reaches the customer. Data, not inferred from the label
      *  text — a rate NAMED "Local pickup" could be priced as delivery. */
-    deliveryMethod: 'pickup' | 'shipping';
+    deliveryMethod: "pickup" | "shipping";
     address: ShippingAddress;
     email: string | null;
   };

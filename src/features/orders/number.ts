@@ -1,4 +1,4 @@
-import { publicIdToken } from '../ids/publicId.ts';
+import { publicIdToken } from "../ids/publicId.ts";
 
 export interface OrderNumberConfig {
   offset: number;
@@ -20,8 +20,7 @@ export interface OrderNumberConfig {
  * (The number is for humans; the unguessable URL uses the random public_id.)
  */
 export function orderNumber(id: number, cfg: OrderNumberConfig): number {
-  const jitter =
-    cfg.randomStep > 0 ? (Math.imul(id, 2654435761) >>> 0) % (cfg.randomStep + 1) : 0;
+  const jitter = cfg.randomStep > 0 ? (Math.imul(id, 2654435761) >>> 0) % (cfg.randomStep + 1) : 0;
   return cfg.offset + (id - 1) * cfg.step + jitter;
 }
 
@@ -34,5 +33,5 @@ export function orderReference(
   id: number,
   cfg: OrderNumberConfig,
 ): string {
-  return publicIdToken(publicId ?? '', 'order') ?? String(orderNumber(id, cfg));
+  return publicIdToken(publicId ?? "", "order") ?? String(orderNumber(id, cfg));
 }

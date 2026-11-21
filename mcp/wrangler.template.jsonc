@@ -27,27 +27,27 @@
         "name": "MCP_RATE_LIMITER",
         "type": "ratelimit",
         "namespace_id": "2001",
-        "simple": { "limit": 30, "period": 60 }
-      }
-    ]
+        "simple": { "limit": 30, "period": 60 },
+      },
+    ],
   },
   // McpAgent is Durable-Object-backed (holds the MCP session).
   "durable_objects": {
     "bindings": [
       { "name": "STORE_MCP", "class_name": "StoreMcp" },
-      { "name": "STORE_MCP_BUYER", "class_name": "BuyerStoreMcp" }
-    ]
+      { "name": "STORE_MCP_BUYER", "class_name": "BuyerStoreMcp" },
+    ],
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["StoreMcp"] },
-    { "tag": "v2", "new_sqlite_classes": ["BuyerStoreMcp"] }
+    { "tag": "v2", "new_sqlite_classes": ["BuyerStoreMcp"] },
   ],
   // Same database as the storefront Worker.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "__DB_NAME__",
-      "database_id": "__DB_ID__"
-    }
-  ]
+      "database_id": "__DB_ID__",
+    },
+  ],
 }

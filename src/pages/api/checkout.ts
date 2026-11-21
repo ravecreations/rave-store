@@ -1,21 +1,21 @@
-import type { APIRoute } from 'astro';
-import { readBoundedText } from '../../features/http/requestBody';
-import { env } from 'cloudflare:workers';
-import { getProductByPublicId, getProductBySlug, type Product } from '../../features/products/db';
+import type { APIRoute } from "astro";
+import { readBoundedText } from "../../features/http/requestBody";
+import { env } from "cloudflare:workers";
+import { getProductByPublicId, getProductBySlug, type Product } from "../../features/products/db";
 import {
   listVariants,
   getExtrasByPublicIds,
   type ProductVariant,
   type ProductExtra,
-} from '../../features/products/variants';
-import { parsePublicId } from '../../features/ids/publicId.ts';
+} from "../../features/products/variants";
+import { parsePublicId } from "../../features/ids/publicId.ts";
 import {
   claimOrderIdentity,
   deleteGuestAccessIfUnsettled,
-} from '../../features/orders/guestAccess.ts';
-import { lineUnitPriceCents } from '../../features/cart/key';
-import { productImageUrl } from '../../features/products/image';
-import { readCart, resolveCart } from '../../features/cart/cart';
+} from "../../features/orders/guestAccess.ts";
+import { lineUnitPriceCents } from "../../features/cart/key";
+import { productImageUrl } from "../../features/products/image";
+import { readCart, resolveCart } from "../../features/cart/cart";
 import {
   getPaymentProvider,
   enabledMethods,
@@ -26,22 +26,22 @@ import {
   OPENNODE_CHECKOUT_TTL_SECONDS,
   RESERVATION_EXPIRY_GRACE_SECONDS,
   DEMO_CHECKOUT_TTL_SECONDS,
-} from '../../features/payments';
-import { getStoreSettings } from '../../features/settings/db';
-import { createConfigRatesCalculator } from '../../features/shipping/calculator';
-import { shippingFor } from '../../features/shipping/effective';
-import { shipmentWeightFor } from '../../features/shipping/lines';
-import { stripeAllowedCountries, stripeSessionDestination } from '../../features/payments/stripeCountries.ts';
-import { getConfig } from '../../config';
+} from "../../features/payments";
+import { getStoreSettings } from "../../features/settings/db";
+import { createConfigRatesCalculator } from "../../features/shipping/calculator";
+import { shippingFor } from "../../features/shipping/effective";
+import { shipmentWeightFor } from "../../features/shipping/lines";
 import {
-  reserveInventory,
-  releaseInventoryReservation,
-} from '../../features/orders/reservations';
-import { reservationItems, type LineDraft } from '../../features/orders/reservationItems.ts';
-import { purgeStockProductCache } from '../../features/cache/purge';
-import { lifecycleActive } from '../../features/digitalDelivery/rollout.ts';
-import { mintLightningOrder } from '../../features/payments/lightning-provider';
-import { getLightningBackend } from '../../features/payments/lightning';
+  stripeAllowedCountries,
+  stripeSessionDestination,
+} from "../../features/payments/stripeCountries.ts";
+import { getConfig } from "../../config";
+import { reserveInventory, releaseInventoryReservation } from "../../features/orders/reservations";
+import { reservationItems, type LineDraft } from "../../features/orders/reservationItems.ts";
+import { purgeStockProductCache } from "../../features/cache/purge";
+import { lifecycleActive } from "../../features/digitalDelivery/rollout.ts";
+import { mintLightningOrder } from "../../features/payments/lightning-provider";
+import { getLightningBackend } from "../../features/payments/lightning";
 
 export const prerender = false;
 
@@ -58,47 +58,55 @@ interface ShipTo {
 
 /** Validate an agent-supplied `ship_to` object; null if incomplete/invalid. */
 function parseShipTo(raw: unknown): ShipTo | null {
-  if (!raw || typeof raw !== 'object') return null;
+  if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  const s = (k: string) => (typeof r[k] === 'string' ? (r[k] as string).trim() : '');
-  const email = s('email');
-  const name = s('name');
-  const line1 = s('line1');
-  const city = s('city');
-  const postal = s('postal');
-  const country = s('country').toUpperCase();
+  const s = (k: string) => (typeof r[k] === "string" ? (r[k] as string).trim() : "");
+  const email = s("email");
+  const name = s("name");
+  const line1 = s("line1");
+  const city = s("city");
+  const postal = s("postal");
+  const country = s("country").toUpperCase();
   if (!/.+@.+\..+/.test(email) || !name || !line1 || !city || !postal || country.length !== 2) {
     return null;
   }
-  return { email, name, line1, line2: s('line2') || null, city, state: s('state') || null, postal, country };
+  return {
+    email,
+    name,
+    line1,
+    line2: s("line2") || null,
+    city,
+    state: s("state") || null,
+    postal,
+    country,
+  };
 }
 
 const MAX_CHECKOUT_LINES = 50;
 const MAX_JSON_BYTES = 64 * 1024;
 
 function reservationTtlSeconds(method: PaymentMethod): number {
-  if (method === 'demo') return DEMO_CHECKOUT_TTL_SECONDS;
-  if (method === 'lightning') {
+  if (method === "demo") return DEMO_CHECKOUT_TTL_SECONDS;
+  if (method === "lightning") {
     return (
-      getConfig().payments.lightning.invoiceExpiryMinutes * 60 +
-      RESERVATION_EXPIRY_GRACE_SECONDS
+      getConfig().payments.lightning.invoiceExpiryMinutes * 60 + RESERVATION_EXPIRY_GRACE_SECONDS
     );
   }
   const providerTtl =
-    method === 'opennode' ? OPENNODE_CHECKOUT_TTL_SECONDS : STRIPE_CHECKOUT_TTL_SECONDS;
+    method === "opennode" ? OPENNODE_CHECKOUT_TTL_SECONDS : STRIPE_CHECKOUT_TTL_SECONDS;
   return providerTtl + RESERVATION_EXPIRY_GRACE_SECONDS;
 }
 
 // Open CORS so browser-based agents/tools can POST cross-origin.
 const CHECKOUT_CORS = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'POST, OPTIONS',
-  'access-control-allow-headers': 'content-type',
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "POST, OPTIONS",
+  "access-control-allow-headers": "content-type",
 };
 const cjson = (data: unknown, status = 200): Response =>
   new Response(JSON.stringify(data, null, 2), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', ...CHECKOUT_CORS },
+    headers: { "content-type": "application/json; charset=utf-8", ...CHECKOUT_CORS },
   });
 
 export const OPTIONS: APIRoute = () => new Response(null, { status: 204, headers: CHECKOUT_CORS });
@@ -116,7 +124,7 @@ export const GET: APIRoute = async () => {
 // JSON Content-Type → the programmatic (agent) path: returns { checkout_url }
 // instead of a redirect. Form posts keep the existing browser flow below.
 export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
-  if ((request.headers.get('content-type') ?? '').includes('application/json')) {
+  if ((request.headers.get("content-type") ?? "").includes("application/json")) {
     return handleJsonCheckout(request, url);
   }
 
@@ -126,28 +134,30 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
   let lines: LineDraft[] = [];
   let cancelUrl = `${origin}/`;
   // Where to send the shopper if a stock check fails (cart, or the product).
-  let errorPath = '/cart';
+  let errorPath = "/cart";
 
   // Forms submit prefixed public IDs only; numeric row IDs are never accepted.
-  const productIdRaw = form.get('product_id');
-  const productPublicId = parsePublicId(productIdRaw, 'product');
-  if (productIdRaw != null && String(productIdRaw).trim() !== '' && !productPublicId) {
-    return new Response('Invalid product id (expected a prod_… public ID).', { status: 400 });
+  const productIdRaw = form.get("product_id");
+  const productPublicId = parsePublicId(productIdRaw, "product");
+  if (productIdRaw != null && String(productIdRaw).trim() !== "" && !productPublicId) {
+    return new Response("Invalid product id (expected a prod_… public ID).", { status: 400 });
   }
   if (productPublicId) {
     const product = await getProductByPublicId(env.DB, productPublicId);
     if (!product || !product.active) {
-      return new Response('Product unavailable', { status: 404 });
+      return new Response("Product unavailable", { status: 404 });
     }
     // Express "Buy now" — resolve variant + extras right here so it checks out
     // WITHOUT the cart (works even when the cart is switched off).
     const variants = await listVariants(env.DB, product.id);
     let variant: ProductVariant | null = null;
     if (variants.length > 0) {
-      const wantedVariant = parsePublicId(form.get('variant_id'), 'variant');
-      variant = wantedVariant ? (variants.find((v) => v.public_id === wantedVariant) ?? null) : null;
+      const wantedVariant = parsePublicId(form.get("variant_id"), "variant");
+      variant = wantedVariant
+        ? (variants.find((v) => v.public_id === wantedVariant) ?? null)
+        : null;
       if (!variant) {
-        const label = product.variant_label || 'option';
+        const label = product.variant_label || "option";
         return redirect(
           `/products/${product.slug}?error=${encodeURIComponent(`Please choose a ${label}.`)}`,
           303,
@@ -155,8 +165,8 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
       }
     }
     const extraPublicIds = form
-      .getAll('extra')
-      .map((v) => parsePublicId(v, 'extra'))
+      .getAll("extra")
+      .map((v) => parsePublicId(v, "extra"))
       .filter((v): v is string => v !== null);
     const extras = extraPublicIds.length
       ? await getExtrasByPublicIds(env.DB, product.id, extraPublicIds)
@@ -167,8 +177,8 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
         qty: 1,
         name:
           product.name +
-          (variant ? ` — ${variant.label}` : '') +
-          (extras.length ? ` (${extras.map((e) => e.label).join(', ')})` : ''),
+          (variant ? ` — ${variant.label}` : "") +
+          (extras.length ? ` (${extras.map((e) => e.label).join(", ")})` : ""),
         unitPriceCents: lineUnitPriceCents(product.price_cents, variant, extras),
         availableStock: variant ? variant.stock : product.stock,
         variantId: variant?.id ?? null,
@@ -184,8 +194,8 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
       // Compose a descriptive name: "Tee — Large (Gift wrap)".
       name:
         l.product.name +
-        (l.variant ? ` — ${l.variant.label}` : '') +
-        (l.extras.length ? ` (${l.extras.map((e) => e.label).join(', ')})` : ''),
+        (l.variant ? ` — ${l.variant.label}` : "") +
+        (l.extras.length ? ` (${l.extras.map((e) => e.label).join(", ")})` : ""),
       unitPriceCents: l.unitPriceCents,
       availableStock: l.availableStock,
       variantId: l.variant?.id ?? null,
@@ -193,7 +203,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
     cancelUrl = `${origin}/cart?canceled=1`;
   }
 
-  if (lines.length === 0) return redirect('/cart', 303);
+  if (lines.length === 0) return redirect("/cart", 303);
 
   // Don't oversell — check the variant's stock (or the product's), not the base.
   const short = lines.find((l) => l.availableStock < l.qty);
@@ -208,20 +218,20 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
   // The buyer picks a rail on the cart page (method buttons). An explicitly-chosen
   // real rail that isn't configured → setup instructions (the cart links there too,
   // this guards a crafted POST). Otherwise resolve to a usable method (demo always).
-  const requestedRaw = String(form.get('method') ?? '').trim();
+  const requestedRaw = String(form.get("method") ?? "").trim();
   const requested = requestedRaw as PaymentMethod;
   const settings = await getStoreSettings(env.DB);
   if (
     requestedRaw &&
-    requestedRaw !== 'demo' &&
-    (['stripe', 'lightning', 'opennode'] as string[]).includes(requestedRaw) &&
+    requestedRaw !== "demo" &&
+    (["stripe", "lightning", "opennode"] as string[]).includes(requestedRaw) &&
     !isMethodAvailable(requested, settings)
   ) {
     return redirect(`/payment-setup?method=${encodeURIComponent(requestedRaw)}`, 303);
   }
   const available = enabledMethods(settings);
   // No method enabled → no checkout. Bounce back to the cart (which says so).
-  if (available.length === 0) return redirect('/cart', 303);
+  if (available.length === 0) return redirect("/cart", 303);
   // Cart checkout passes an explicit method (the picker buttons). Express buy-now
   // passes none → use the store's default (available[0] — the default rail first).
   const selected: PaymentMethod =
@@ -244,16 +254,16 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
   // and Demo has none. Without this, OpenNode charged no shipping at all and Demo
   // billed whichever rate sorted first — both silently wrong once a merchant can
   // edit rates. Stripe collects the address itself and continues below.
-  const IN_APP_SHIPPING_RAILS = ['lightning', 'opennode', 'demo'];
+  const IN_APP_SHIPPING_RAILS = ["lightning", "opennode", "demo"];
   if (IN_APP_SHIPPING_RAILS.includes(selected) && shippingApplies) {
     const params = new URLSearchParams({ method: selected });
     if (productPublicId) {
-      params.set('product_id', productPublicId);
-      const vid = parsePublicId(form.get('variant_id'), 'variant');
-      if (vid) params.set('variant_id', vid);
-      for (const ex of form.getAll('extra')) {
-        const xid = parsePublicId(ex, 'extra');
-        if (xid) params.append('extra', xid);
+      params.set("product_id", productPublicId);
+      const vid = parsePublicId(form.get("variant_id"), "variant");
+      if (vid) params.set("variant_id", vid);
+      for (const ex of form.getAll("extra")) {
+        const xid = parsePublicId(ex, "extra");
+        if (xid) params.append("extra", xid);
       }
     }
     return redirect(`/checkout?${params}`, 303);
@@ -274,7 +284,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
   // Stripe gets that zone's rates instead of always the first zone's. Stripe still
   // collects + confirms the full address on its page; this just sets which rates
   // it shows. Falls back to the first zone's country (e.g. buy-now, no selector).
-  const countryField = form.get('country');
+  const countryField = form.get("country");
   const selectedCountry = countryField == null ? null : String(countryField).trim().toUpperCase();
   // Nullable on purpose: an invented fallback (say 'US' for a CU-only store)
   // would fail later as "we don't ship to US" — true but useless. The absence of
@@ -291,28 +301,29 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
   if (shippingApplies && shipCountry == null) {
     return redirect(
       `${errorPath}?error=${encodeURIComponent(
-        'The configured shipping destinations are not supported by card checkout. Please contact us to complete this order.',
+        "The configured shipping destinations are not supported by card checkout. Please contact us to complete this order.",
       )}`,
       303,
     );
   }
-  const quote = shippingApplies && shipCountry != null
-    ? shipCalc.quoteFor({
-        subtotalCents,
-        country: shipCountry,
-        itemWeightGrams: shipment.itemWeightGrams,
-        missingWeight: shipment.missingWeight,
-      })
-    : null;
+  const quote =
+    shippingApplies && shipCountry != null
+      ? shipCalc.quoteFor({
+          subtotalCents,
+          country: shipCountry,
+          itemWeightGrams: shipment.itemWeightGrams,
+          missingWeight: shipment.missingWeight,
+        })
+      : null;
   // No options for a REQUIRED shipment blocks the order — sending Stripe an empty
   // option list (or an empty allowed_countries) is an API error, not "no shipping".
   if (quote && quote.options.length === 0) {
-    const missing = quote.omitted.some((o) => o.reason === 'missing_weight');
+    const missing = quote.omitted.some((o) => o.reason === "missing_weight");
     if (missing) {
       console.error(
         JSON.stringify({
-          event: 'shipping_quote_blocked',
-          reason: 'missing_weight',
+          event: "shipping_quote_blocked",
+          reason: "missing_weight",
           country: shipCountry,
           products: quote.missingWeight.map(
             (m) => lines.find((l) => l.product.id === m.productId)?.product.public_id ?? m.name,
@@ -324,8 +335,8 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
       `${errorPath}?error=${encodeURIComponent(
         missing
           ? "We can't calculate shipping for one of these items right now. Please contact us to complete this order."
-          : quote.omitted.some((o) => o.reason === 'overweight')
-            ? 'This order is too heavy for the available shipping services.'
+          : quote.omitted.some((o) => o.reason === "overweight")
+            ? "This order is too heavy for the available shipping services."
             : `Sorry, we don't ship to ${shipCountry} yet.`,
       )}`,
       303,
@@ -374,7 +385,7 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
   if (!reserved) {
     await deleteGuestAccessIfUnsettled(env.DB, publicId);
     return redirect(
-      `${errorPath}?error=${encodeURIComponent('Some inventory just sold out — please review your cart.')}`,
+      `${errorPath}?error=${encodeURIComponent("Some inventory just sold out — please review your cart.")}`,
       303,
     );
   }
@@ -399,7 +410,13 @@ export const POST: APIRoute = async ({ request, cookies, url, redirect }) => {
       allowPromotionCodes: settings.discountsEnabled ?? cfg.discounts.enabled,
       automaticTax: settings.taxEnabled ?? cfg.tax.enabled,
       orderItemsJson: JSON.stringify(
-        lines.map((l) => ({ id: l.product.id, q: l.qty, n: l.name, p: l.unitPriceCents, v: l.variantId })),
+        lines.map((l) => ({
+          id: l.product.id,
+          q: l.qty,
+          n: l.name,
+          p: l.unitPriceCents,
+          v: l.variantId,
+        })),
       ),
       // Provider metadata stays bounded (and NEVER carries the access token);
       // the cart snapshot is held in D1.
@@ -441,21 +458,24 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
   try {
     raw = await readBoundedText(request, MAX_JSON_BYTES);
   } catch {
-    return cjson({ error: 'Invalid request body.' }, 400);
+    return cjson({ error: "Invalid request body." }, 400);
   }
   if (raw === null) {
-    return cjson({ error: 'Checkout body is too large.' }, 413);
+    return cjson({ error: "Checkout body is too large." }, 413);
   }
 
   let body: unknown;
   try {
     body = JSON.parse(raw);
   } catch {
-    return cjson({ error: 'Invalid JSON body.' }, 400);
+    return cjson({ error: "Invalid JSON body." }, 400);
   }
   const rawItems = (body as { items?: unknown })?.items;
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
-    return cjson({ error: 'Body must be { "items": [{ "product_id": "prod_…", "quantity": number }] }.' }, 400);
+    return cjson(
+      { error: 'Body must be { "items": [{ "product_id": "prod_…", "quantity": number }] }.' },
+      400,
+    );
   }
   if (rawItems.length > MAX_CHECKOUT_LINES) {
     return cjson({ error: `A checkout can contain at most ${MAX_CHECKOUT_LINES} lines.` }, 400);
@@ -466,14 +486,17 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
   const jsonSettings = await getStoreSettings(env.DB);
   const available = enabledMethods(jsonSettings);
   if (available.length === 0) {
-    return cjson({ error: 'This store is not accepting payments right now.' }, 503);
+    return cjson({ error: "This store is not accepting payments right now." }, 503);
   }
   const requested =
-    typeof (body as { method?: unknown }).method === 'string'
+    typeof (body as { method?: unknown }).method === "string"
       ? ((body as { method: string }).method.trim() as PaymentMethod)
       : undefined;
   if (requested && !available.includes(requested)) {
-    return cjson({ error: `Unsupported payment method "${requested}".`, available_methods: available }, 400);
+    return cjson(
+      { error: `Unsupported payment method "${requested}".`, available_methods: available },
+      400,
+    );
   }
   const method: PaymentMethod = requested ?? available[0] ?? defaultMethod(jsonSettings);
 
@@ -501,7 +524,9 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
     // The legacy numeric `extras` array is rejected outright, not silently read.
     if (r.extras !== undefined) {
       return cjson(
-        { error: 'The numeric "extras" array is no longer accepted; pass "extra_ids": ["xtra_…"].' },
+        {
+          error: 'The numeric "extras" array is no longer accepted; pass "extra_ids": ["xtra_…"].',
+        },
         400,
       );
     }
@@ -509,24 +534,28 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
 
     // Product selector: prefixed public ID (canonical) or slug (convenience).
     let product: Product | null = null;
-    let selector = '';
+    let selector = "";
     if (r.product_id !== undefined) {
-      const pid = parsePublicId(r.product_id, 'product');
+      const pid = parsePublicId(r.product_id, "product");
       if (!pid) {
         return cjson(
-          { error: 'Each "product_id" must be a prefixed public ID ("prod_…") — numeric IDs are not accepted.' },
+          {
+            error:
+              'Each "product_id" must be a prefixed public ID ("prod_…") — numeric IDs are not accepted.',
+          },
           400,
         );
       }
       selector = pid;
       product = await getProductByPublicId(env.DB, pid);
     } else {
-      const slug = typeof r.slug === 'string' ? r.slug.trim() : '';
+      const slug = typeof r.slug === "string" ? r.slug.trim() : "";
       if (!slug) return cjson({ error: 'Each item needs a "product_id" (or "slug").' }, 400);
       selector = slug;
       product = await getProductBySlug(env.DB, slug);
     }
-    if (!Number.isInteger(qty) || qty < 1) return cjson({ error: `Invalid quantity for "${selector}".` }, 400);
+    if (!Number.isInteger(qty) || qty < 1)
+      return cjson({ error: `Invalid quantity for "${selector}".` }, 400);
     if (!product || !product.active) return cjson({ error: `Product not found: ${selector}` }, 404);
     const slug = product.slug;
 
@@ -534,21 +563,27 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
     const variants = await listVariants(env.DB, product.id);
     let variant: ProductVariant | null = null;
     if (variants.length > 0) {
-      if (r.variant_id !== undefined && typeof r.variant_id !== 'string') {
+      if (r.variant_id !== undefined && typeof r.variant_id !== "string") {
         return cjson(
-          { error: `"variant_id" must be a prefixed public ID ("var_…") — numeric IDs are not accepted.` },
+          {
+            error: `"variant_id" must be a prefixed public ID ("var_…") — numeric IDs are not accepted.`,
+          },
           400,
         );
       }
-      const wanted = parsePublicId(r.variant_id, 'variant');
+      const wanted = parsePublicId(r.variant_id, "variant");
       variant = wanted ? (variants.find((v) => v.public_id === wanted) ?? null) : null;
       if (!variant) {
         return cjson(
           {
-            error: `"${slug}" requires a valid "variant_id" (${product.variant_label || 'option'}).`,
+            error: `"${slug}" requires a valid "variant_id" (${product.variant_label || "option"}).`,
             product_id: product.public_id,
             slug,
-            variants: variants.map((v) => ({ id: v.public_id, label: v.label, in_stock: v.stock > 0 })),
+            variants: variants.map((v) => ({
+              id: v.public_id,
+              label: v.label,
+              in_stock: v.stock > 0,
+            })),
           },
           400,
         );
@@ -563,10 +598,13 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       }
       const wantExtras: string[] = [];
       for (const x of r.extra_ids) {
-        const xid = parsePublicId(x, 'extra');
+        const xid = parsePublicId(x, "extra");
         if (!xid) {
           return cjson(
-            { error: 'Every "extra_ids" entry must be a prefixed public ID ("xtra_…") — numeric IDs are not accepted.' },
+            {
+              error:
+                'Every "extra_ids" entry must be a prefixed public ID ("xtra_…") — numeric IDs are not accepted.',
+            },
             400,
           );
         }
@@ -580,7 +618,10 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       const label = variant ? `${product.name} — ${variant.label}` : product.name;
       return cjson(
         {
-          error: availableStock <= 0 ? `${label} is sold out.` : `Only ${availableStock} of ${label} in stock.`,
+          error:
+            availableStock <= 0
+              ? `${label} is sold out.`
+              : `Only ${availableStock} of ${label} in stock.`,
           product_id: product.public_id,
           slug,
           available: availableStock,
@@ -594,8 +635,8 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       qty,
       name:
         product.name +
-        (variant ? ` — ${variant.label}` : '') +
-        (extras.length ? ` (${extras.map((e) => e.label).join(', ')})` : ''),
+        (variant ? ` — ${variant.label}` : "") +
+        (extras.length ? ` (${extras.map((e) => e.label).join(", ")})` : ""),
       unitPriceCents: lineUnitPriceCents(product.price_cents, variant, extras),
       availableStock,
       variantId: variant?.id ?? null,
@@ -622,11 +663,11 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
   /** 422 with a reason an agent can act on, from the same quote the browser uses. */
   const productByRowId = new Map(lines.map((l) => [l.product.id, l.product]));
   const shippingProblem = (country: string, quote: ReturnType<typeof quoteFor>) => {
-    if (quote.omitted.some((o) => o.reason === 'missing_weight')) {
+    if (quote.omitted.some((o) => o.reason === "missing_weight")) {
       console.error(
         JSON.stringify({
-          event: 'shipping_quote_blocked',
-          reason: 'missing_weight',
+          event: "shipping_quote_blocked",
+          reason: "missing_weight",
           country: country.toUpperCase(),
           products: quote.missingWeight.map(
             (m) => productByRowId.get(m.productId)?.public_id ?? m.name,
@@ -635,8 +676,8 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       );
       return cjson(
         {
-          error: 'Shipping cannot be calculated: some items have no shipping weight recorded.',
-          reason: 'missing_weight',
+          error: "Shipping cannot be calculated: some items have no shipping weight recorded.",
+          reason: "missing_weight",
           items: quote.missingWeight.map((m) => ({
             product_id: productByRowId.get(m.productId)?.public_id ?? null,
             slug: productByRowId.get(m.productId)?.slug ?? null,
@@ -646,18 +687,18 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
         422,
       );
     }
-    if (quote.omitted.some((o) => o.reason === 'overweight')) {
+    if (quote.omitted.some((o) => o.reason === "overweight")) {
       return cjson(
         {
-          error: 'This order is too heavy for the available shipping services.',
-          reason: 'overweight',
+          error: "This order is too heavy for the available shipping services.",
+          reason: "overweight",
           shipment_weight_grams: quote.shipmentWeightGrams,
         },
         422,
       );
     }
     return cjson(
-      { error: `This store does not ship to ${country.toUpperCase()}.`, reason: 'destination' },
+      { error: `This store does not ship to ${country.toUpperCase()}.`, reason: "destination" },
       422,
     );
   };
@@ -671,28 +712,28 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
   // string of the wrong shape, a number, null — is a claim about the destination
   // and must be judged, not silently replaced with a different country.
   const shipCountryRaw = (body as { ship_country?: unknown }).ship_country;
-  if (shipCountryRaw !== undefined && typeof shipCountryRaw !== 'string') {
+  if (shipCountryRaw !== undefined && typeof shipCountryRaw !== "string") {
     return cjson(
-      { error: '"ship_country" must be an ISO 3166-1 alpha-2 string.', reason: 'destination' },
+      { error: '"ship_country" must be an ISO 3166-1 alpha-2 string.', reason: "destination" },
       422,
     );
   }
   const stripeCountry =
     shipCountryRaw === undefined ? stripeFallbackCountry : shipCountryRaw.trim().toUpperCase();
-  if (shippingOn && method === 'stripe' && stripeCountry == null) {
+  if (shippingOn && method === "stripe" && stripeCountry == null) {
     return cjson(
       {
         error:
           'None of the configured shipping destinations are supported by Stripe checkout. Pass "ship_country" or use another payment method.',
-        reason: 'destination',
+        reason: "destination",
       },
       422,
     );
   }
   const hostedQuote =
-    shippingOn && method === 'stripe' && stripeCountry != null ? quoteFor(stripeCountry) : null;
+    shippingOn && method === "stripe" && stripeCountry != null ? quoteFor(stripeCountry) : null;
   if (hostedQuote && hostedQuote.options.length === 0) {
-    return shippingProblem(stripeCountry ?? '', hostedQuote);
+    return shippingProblem(stripeCountry ?? "", hostedQuote);
   }
   // Narrow the session to the quoted country (see the form path): a wider list
   // would let the payer keep this zone's rate while shipping to another.
@@ -704,7 +745,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
     return cjson(
       {
         error: `Stripe checkout cannot collect an address in ${stripeCountry}.`,
-        reason: 'destination',
+        reason: "destination",
       },
       422,
     );
@@ -724,7 +765,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
   // address, we price THAT country, and the chosen rate travels with the charge.
   // Without this, OpenNode and Demo reached their adapters with an unselected list
   // and charged nothing for shipping.
-  const IN_APP_JSON_RAILS = ['lightning', 'opennode', 'demo'];
+  const IN_APP_JSON_RAILS = ["lightning", "opennode", "demo"];
   const needsShipTo = shippingOn && IN_APP_JSON_RAILS.includes(method);
   let shipTo: ReturnType<typeof parseShipTo> = null;
   let chosen: { label: string; amountCents: number; pickup?: boolean } | undefined;
@@ -745,7 +786,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
     const shipOptions = inAppQuote.options;
     if (shipOptions.length === 0) return shippingProblem(shipTo.country, inAppQuote);
     const wantLabel =
-      typeof (body as { shipping_label?: unknown }).shipping_label === 'string'
+      typeof (body as { shipping_label?: unknown }).shipping_label === "string"
         ? (body as { shipping_label: string }).shipping_label
         : null;
     chosen = wantLabel ? shipOptions.find((o) => o.label === wantLabel) : shipOptions[0];
@@ -753,26 +794,29 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       return cjson(
         {
           error: `Unknown shipping_label "${wantLabel}".`,
-          shipping_options: shipOptions.map((o) => ({ label: o.label, amount_cents: o.amountCents })),
+          shipping_options: shipOptions.map((o) => ({
+            label: o.label,
+            amount_cents: o.amountCents,
+          })),
         },
         400,
       );
     }
   }
 
-  if (method === 'lightning' && shippingOn && shipTo && chosen && inAppQuote) {
+  if (method === "lightning" && shippingOn && shipTo && chosen && inAppQuote) {
     const { publicId: lnPublicId, accessToken: lnAccessToken } = await claimOrderIdentity(env.DB);
     const lnReserved = await reserveInventory(
       env.DB,
       lnPublicId,
       reservationItems(lines),
-      reservationTtlSeconds('lightning'),
-      'lightning',
+      reservationTtlSeconds("lightning"),
+      "lightning",
       purgeStockProductCache,
     );
     if (!lnReserved) {
       await deleteGuestAccessIfUnsettled(env.DB, lnPublicId);
-      return cjson({ error: 'Some inventory just sold out. Refresh the catalog and retry.' }, 409);
+      return cjson({ error: "Some inventory just sold out. Refresh the catalog and retry." }, 409);
     }
     try {
       const minted = await mintLightningOrder(env.DB, await getLightningBackend(), {
@@ -784,9 +828,15 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
         shippingCents: chosen.amountCents,
         shippingLabel: chosen.label,
         shippingWeightGrams: inAppQuote.shipmentWeightGrams,
-        deliveryMethod: chosen.pickup ? 'pickup' : 'shipping',
+        deliveryMethod: chosen.pickup ? "pickup" : "shipping",
         itemsJson: JSON.stringify(
-          lines.map((l) => ({ id: l.product.id, v: l.variantId, q: l.qty, n: l.name, p: l.unitPriceCents })),
+          lines.map((l) => ({
+            id: l.product.id,
+            v: l.variantId,
+            q: l.qty,
+            n: l.name,
+            p: l.unitPriceCents,
+          })),
         ),
         email: shipTo.email,
         shippingAddress: {
@@ -803,7 +853,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       return cjson({
         method,
         available_methods: available,
-        flow: 'invoice',
+        flow: "invoice",
         checkout_url: minted.payUrl,
         ...(lifecycleActive()
           ? { order_status_url: `${origin}/order/${lnAccessToken}/status` }
@@ -830,7 +880,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
           unit_price_cents: l.unitPriceCents,
           line_total_cents: l.unitPriceCents * l.qty,
         })),
-        note: 'Pay the BOLT11 `lightning.invoice` from any Lightning wallet — the total includes shipping, and the order captures your ship_to address. Settlement is confirmed by the webhook.',
+        note: "Pay the BOLT11 `lightning.invoice` from any Lightning wallet — the total includes shipping, and the order captures your ship_to address. Settlement is confirmed by the webhook.",
       });
     } catch (error) {
       // The Lightning node can be briefly unreachable. Release the held stock and
@@ -840,12 +890,15 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       await deleteGuestAccessIfUnsettled(env.DB, lnPublicId);
       console.error(
         JSON.stringify({
-          event: 'lightning_invoice_failed',
+          event: "lightning_invoice_failed",
           message: error instanceof Error ? error.message : String(error),
         }),
       );
       return cjson(
-        { error: 'Lightning is temporarily unavailable. Retry shortly, or use another method.', available_methods: available },
+        {
+          error: "Lightning is temporarily unavailable. Retry shortly, or use another method.",
+          available_methods: available,
+        },
         503,
       );
     }
@@ -864,7 +917,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
   );
   if (!reserved) {
     await deleteGuestAccessIfUnsettled(env.DB, publicId);
-    return cjson({ error: 'Some inventory just sold out. Refresh the catalog and retry.' }, 409);
+    return cjson({ error: "Some inventory just sold out. Refresh the catalog and retry." }, 409);
   }
 
   let result;
@@ -879,14 +932,14 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       })),
       successUrl: `${origin}/order/${accessToken}`,
       cancelUrl: `${origin}/`,
-      shipping: method === 'stripe' ? shipping : undefined,
+      shipping: method === "stripe" ? shipping : undefined,
       ...(chosen &&
         shipTo && {
           selectedShipping: {
             label: chosen.label,
             amountCents: chosen.amountCents,
             weightGrams: inAppQuote?.shipmentWeightGrams ?? null,
-            deliveryMethod: chosen.pickup ? 'pickup' : 'shipping',
+            deliveryMethod: chosen.pickup ? "pickup" : "shipping",
             address: {
               name: shipTo.name,
               line1: shipTo.line1,
@@ -902,7 +955,13 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       allowPromotionCodes: jsonSettings.discountsEnabled ?? cfg.discounts.enabled,
       automaticTax: jsonSettings.taxEnabled ?? cfg.tax.enabled,
       orderItemsJson: JSON.stringify(
-        lines.map((l) => ({ id: l.product.id, q: l.qty, n: l.name, p: l.unitPriceCents, v: l.variantId })),
+        lines.map((l) => ({
+          id: l.product.id,
+          q: l.qty,
+          n: l.name,
+          p: l.unitPriceCents,
+          v: l.variantId,
+        })),
       ),
       metadata: {
         public_id: publicId,
@@ -923,7 +982,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
   return cjson({
     method, // the rail used: 'stripe' | 'lightning' | 'opennode'
     available_methods: available, // what else this store offers
-    flow: ln ? 'invoice' : 'redirect',
+    flow: ln ? "invoice" : "redirect",
     checkout_url: result.url, // human fallback (QR page for Lightning, hosted page otherwise)
     ...(lifecycleActive() ? { order_status_url: `${origin}/order/${accessToken}/status` } : {}),
     ...(ln && {
@@ -954,7 +1013,7 @@ async function handleJsonCheckout(request: Request, url: URL): Promise<Response>
       line_total_cents: l.unitPriceCents * l.qty,
     })),
     note: ln
-      ? 'Pay the BOLT11 `lightning.invoice` from any Lightning wallet — no human needed; the order is recorded once settlement is confirmed. Or open checkout_url for the QR page.'
-      : 'Open checkout_url to complete payment. Shipping, tax, and discounts (if enabled) are applied on the hosted checkout page.',
+      ? "Pay the BOLT11 `lightning.invoice` from any Lightning wallet — no human needed; the order is recorded once settlement is confirmed. Or open checkout_url for the QR page."
+      : "Open checkout_url to complete payment. Shipping, tax, and discounts (if enabled) are applied on the hosted checkout page.",
   });
 }

@@ -1,4 +1,4 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database } from "@cloudflare/workers-types";
 
 /**
  * The order_notifications state machine — every statement that moves a row
@@ -9,7 +9,11 @@ import type { D1Database } from '@cloudflare/workers-types';
  * ordering pass unnoticed.
  */
 
-export const NOTIFICATION_KINDS = ['customer-receipt', 'owner-notification', 'order-shipped'] as const;
+export const NOTIFICATION_KINDS = [
+  "customer-receipt",
+  "owner-notification",
+  "order-shipped",
+] as const;
 
 /**
  * Versioned-kind family for guest-link reissue (see the public-ID plan): each
@@ -18,7 +22,7 @@ export const NOTIFICATION_KINDS = ['customer-receipt', 'owner-notification', 'or
  * deliverer recognises the prefix rather than a fixed string, and skips any
  * event whose generation no longer matches order_guest_access.generation.
  */
-export const GUEST_LINK_REISSUE_PREFIX = 'guest-link-reissue:';
+export const GUEST_LINK_REISSUE_PREFIX = "guest-link-reissue:";
 export type GuestLinkReissueKind = `${typeof GUEST_LINK_REISSUE_PREFIX}${number}`;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number] | GuestLinkReissueKind;
@@ -50,7 +54,7 @@ export async function queueNotification(
   kind: NotificationKind,
 ): Promise<void> {
   await db
-    .prepare('INSERT OR IGNORE INTO order_notifications (order_id, kind) VALUES (?, ?)')
+    .prepare("INSERT OR IGNORE INTO order_notifications (order_id, kind) VALUES (?, ?)")
     .bind(orderId, kind)
     .run();
 }
@@ -60,10 +64,7 @@ export async function queueNotification(
  * expired lease. The deliverer iterates THIS rather than the fixed kind list so
  * versioned reissue rows are picked up by the same claim/send/mark machinery.
  */
-export async function listUndeliveredKinds(
-  db: D1Database,
-  orderId: number,
-): Promise<string[]> {
+export async function listUndeliveredKinds(db: D1Database, orderId: number): Promise<string[]> {
   const { results } = await db
     .prepare(
       `SELECT kind FROM order_notifications
@@ -182,7 +183,7 @@ export async function markNotificationFailed(
         WHERE order_id = ? AND kind = ? AND state = 'processing' AND attempts = ?`,
     )
     .bind(
-      terminal || attempts >= MAX_ATTEMPTS ? 'dead' : 'pending',
+      terminal || attempts >= MAX_ATTEMPTS ? "dead" : "pending",
       message.slice(0, 500),
       orderId,
       kind,

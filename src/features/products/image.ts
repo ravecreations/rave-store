@@ -1,8 +1,8 @@
-import { mediaUrl } from '../media/url';
-import { validateUpload } from '../media/upload';
+import { mediaUrl } from "../media/url";
+import { validateUpload } from "../media/upload";
 
-export type ImageDelivery = 'original' | 'cloudflare';
-export type ProductImageUsage = 'card' | 'detail' | 'thumbnail';
+export type ImageDelivery = "original" | "cloudflare";
+export type ProductImageUsage = "card" | "detail" | "thumbnail";
 
 export const PRODUCT_IMAGE_WIDTHS = [128, 384, 768, 1024] as const;
 
@@ -12,15 +12,15 @@ const USAGE_DEFAULTS: Record<
 > = {
   card: {
     fallbackWidth: 384,
-    sizes: '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 384px',
+    sizes: "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 384px",
   },
   detail: {
     fallbackWidth: 768,
-    sizes: '(max-width: 768px) 100vw, 50vw',
+    sizes: "(max-width: 768px) 100vw, 50vw",
   },
   thumbnail: {
     fallbackWidth: 128,
-    sizes: '128px',
+    sizes: "128px",
   },
 };
 
@@ -33,7 +33,7 @@ export interface ProductImageSources {
 export function onDemandImageDeliveryAvailable(baseUrl: string): boolean {
   try {
     const url = new URL(baseUrl);
-    return url.protocol === 'https:' && !!url.hostname;
+    return url.protocol === "https:" && !!url.hostname;
   } catch {
     return false;
   }
@@ -50,8 +50,8 @@ export function onDemandImageDeliveryAvailable(baseUrl: string): boolean {
  * route; otherwise a root-relative `/images/...` path (prefix with the origin
  * for an absolute URL where one is required, e.g. Stripe/email).
  */
-export function productImageUrl(imageKey: string | null, baseUrl = ''): string {
-  if (!imageKey) return '/placeholder.png';
+export function productImageUrl(imageKey: string | null, baseUrl = ""): string {
+  if (!imageKey) return "/placeholder.png";
   return mediaUrl(imageKey, baseUrl);
 }
 
@@ -71,17 +71,17 @@ const TRANSFORMABLE_KEY = /^(?:products|media)\/[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
 /** Shared by the storefront srcset and the upload pre-warm — one string, so the
  *  pre-warmed cache entries are byte-identical to the URLs pages emit. */
-const TRANSFORM_OPTIONS = 'fit=scale-down,format=auto,quality=82,onerror=redirect';
+const TRANSFORM_OPTIONS = "fit=scale-down,format=auto,quality=82,onerror=redirect";
 
 function versionedTransformSource(imageKey: string, baseUrl: string): string | null {
   // On-demand transforms require a public absolute source. Keep transformation
   // requests scoped to the store's own image prefixes on the configured origin;
   // malformed or out-of-prefix keys simply retain original delivery.
   if (!TRANSFORMABLE_KEY.test(imageKey)) return null;
-  if (imageKey.split('/').some((segment) => segment === '.' || segment === '..')) return null;
+  if (imageKey.split("/").some((segment) => segment === "." || segment === "..")) return null;
   try {
-    const base = new URL(`${baseUrl.replace(/\/+$/, '')}/`);
-    if (base.protocol !== 'https:' && base.protocol !== 'http:') return null;
+    const base = new URL(`${baseUrl.replace(/\/+$/, "")}/`);
+    if (base.protocol !== "https:" && base.protocol !== "http:") return null;
     const source = new URL(imageKey, base);
     if (source.origin !== base.origin || !source.pathname.startsWith(base.pathname)) return null;
     // No cache-busting parameter: every key is unique per upload, so a given
@@ -95,22 +95,18 @@ function versionedTransformSource(imageKey: string, baseUrl: string): string | n
   }
 }
 
-function transformPrefix(transformOrigin = ''): string | null {
-  if (!transformOrigin) return '/cdn-cgi/image/';
+function transformPrefix(transformOrigin = ""): string | null {
+  if (!transformOrigin) return "/cdn-cgi/image/";
   try {
     const origin = new URL(transformOrigin);
-    if (origin.protocol !== 'https:' && origin.protocol !== 'http:') return null;
+    if (origin.protocol !== "https:" && origin.protocol !== "http:") return null;
     return `${origin.origin}/cdn-cgi/image/`;
   } catch {
     return null;
   }
 }
 
-function transformedUrl(
-  source: string,
-  options: string,
-  transformOrigin = '',
-): string | null {
+function transformedUrl(source: string, options: string, transformOrigin = ""): string | null {
   const prefix = transformPrefix(transformOrigin);
   return prefix ? `${prefix}${options}/${source}` : null;
 }
@@ -130,24 +126,20 @@ export function productImageSources(
     transformOrigin?: string;
   } = {},
 ): ProductImageSources {
-  const baseUrl = options.baseUrl ?? '';
+  const baseUrl = options.baseUrl ?? "";
   const original = productImageUrl(imageKey, baseUrl);
-  if (!imageKey || options.delivery !== 'cloudflare' || !baseUrl) {
+  if (!imageKey || options.delivery !== "cloudflare" || !baseUrl) {
     return { src: original };
   }
 
   const source = versionedTransformSource(imageKey, baseUrl);
   if (!source) return { src: original };
 
-  const usage = options.usage ?? 'card';
+  const usage = options.usage ?? "card";
   const defaults = USAGE_DEFAULTS[usage];
   const common = TRANSFORM_OPTIONS;
   const candidates = PRODUCT_IMAGE_WIDTHS.flatMap((width) => {
-    const url = transformedUrl(
-      source,
-      `width=${width},${common}`,
-      options.transformOrigin,
-    );
+    const url = transformedUrl(source, `width=${width},${common}`, options.transformOrigin);
     return url ? [`${url} ${width}w`] : [];
   });
   const fallback = transformedUrl(
@@ -159,7 +151,7 @@ export function productImageSources(
 
   return {
     src: fallback,
-    srcset: candidates.join(', '),
+    srcset: candidates.join(", "),
     sizes: options.sizes ?? defaults.sizes,
   };
 }
@@ -190,7 +182,7 @@ export async function prewarmImageTransforms(
     PRODUCT_IMAGE_WIDTHS.flatMap((width) => {
       const url = transformedUrl(source, `width=${width},${TRANSFORM_OPTIONS}`, transformOrigin);
       if (!url) return [];
-      return ['image/avif,image/webp,image/apng,*/*', 'image/webp,*/*'].map((accept) =>
+      return ["image/avif,image/webp,image/apng,*/*", "image/webp,*/*"].map((accept) =>
         fetch(url, {
           headers: { accept },
           // A wedged resize must not pin the background task to its 30s bound.
@@ -202,11 +194,9 @@ export async function prewarmImageTransforms(
       );
     }),
   );
-  const failed = results.filter((r) => r.status === 'rejected').length;
+  const failed = results.filter((r) => r.status === "rejected").length;
   if (failed > 0) {
-    console.error(
-      JSON.stringify({ event: 'image_prewarm_incomplete', key: imageKey, failed }),
-    );
+    console.error(JSON.stringify({ event: "image_prewarm_incomplete", key: imageKey, failed }));
   }
 }
 
@@ -214,17 +204,17 @@ export async function prewarmImageTransforms(
 export function productEmailImageUrl(
   imageKey: string | null,
   siteOrigin: string,
-  baseUrl = '',
-  delivery: ImageDelivery = 'original',
+  baseUrl = "",
+  delivery: ImageDelivery = "original",
 ): string {
   const original = new URL(productImageUrl(imageKey, baseUrl), siteOrigin).href;
-  if (!imageKey || delivery !== 'cloudflare' || !baseUrl) return original;
+  if (!imageKey || delivery !== "cloudflare" || !baseUrl) return original;
   const source = versionedTransformSource(imageKey, baseUrl);
   if (!source) return original;
   return (
     transformedUrl(
       source,
-      'width=96,height=96,fit=cover,format=jpeg,quality=80,onerror=redirect',
+      "width=96,height=96,fit=cover,format=jpeg,quality=80,onerror=redirect",
       siteOrigin,
     ) ?? original
   );

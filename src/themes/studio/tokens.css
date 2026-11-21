@@ -39,12 +39,10 @@
      button text; this is roughly 7:1. */
   --color-on-brand: #14100e;
 
-  --font-sans: ui-sans-serif, -apple-system, 'Helvetica Neue', Helvetica,
-    sans-serif;
+  --font-sans: ui-sans-serif, -apple-system, "Helvetica Neue", Helvetica, sans-serif;
   /* High-contrast didone. Every fallback is a system face: nothing here needs a
      remote font to render. */
-  --font-serif: 'Didot', 'Bodoni 72', 'Hoefler Text', 'Playfair Display',
-    Georgia, serif;
+  --font-serif: "Didot", "Bodoni 72", "Hoefler Text", "Playfair Display", Georgia, serif;
 
   /* Square. A gallery does not round its corners. */
   --radius-md: 0px;
@@ -102,7 +100,9 @@
       radial-gradient(120% 80% at 50% -20%, #2a2520 0%, #17151300 55%, #0d0c0b00 100%);
     background-attachment: fixed, fixed;
     background-repeat: repeat, no-repeat;
-    background-size: 140px 140px, 100% 100%;
+    background-size:
+      140px 140px,
+      100% 100%;
     /* Grain sits at a few per cent so it is felt rather than seen; any more and
        it costs contrast on body copy. */
     background-blend-mode: overlay, normal;

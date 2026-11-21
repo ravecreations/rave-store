@@ -7,14 +7,14 @@
  */
 function b64urlEncode(s: string): string {
   const bytes = new TextEncoder().encode(s);
-  let bin = '';
+  let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function b64urlDecode(s: string): string | null {
   try {
-    const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+    const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
     const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
     return new TextDecoder().decode(bytes);
   } catch {
@@ -24,14 +24,14 @@ function b64urlDecode(s: string): string | null {
 
 async function hmacHex(key: string, message: string): Promise<string> {
   const k = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     new TextEncoder().encode(key),
-    { name: 'HMAC', hash: 'SHA-256' },
+    { name: "HMAC", hash: "SHA-256" },
     false,
-    ['sign'],
+    ["sign"],
   );
-  const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(message));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const sig = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(message));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function constantTimeEqual(a: string, b: string): boolean {
@@ -60,7 +60,7 @@ export async function verifyToken(
   nowSeconds: number,
 ): Promise<string | null> {
   if (!token) return null;
-  const parts = token.split('.');
+  const parts = token.split(".");
   if (parts.length !== 3) return null;
   const [p, expStr, sig] = parts;
   const exp = Number(expStr);

@@ -1,20 +1,15 @@
-import { env } from 'cloudflare:workers';
-import { getConfig } from '../../config';
-import type { Product } from '../products/db';
-import { getProductsByIds, setRelatedIds, parseRelatedIds } from '../products/db';
-import type { SearchProvider } from './provider';
-import { createFtsSearch } from './fts';
-import {
-  createVectorSearch,
-  embedText,
-  productEmbedText,
-  relatedByVector,
-} from './vector';
-import type { SearchResult } from './provider';
-import { categoriesForProduct } from '../categories/db';
-import { getSetting } from '../settings/db';
+import { env } from "cloudflare:workers";
+import { getConfig } from "../../config";
+import type { Product } from "../products/db";
+import { getProductsByIds, setRelatedIds, parseRelatedIds } from "../products/db";
+import type { SearchProvider } from "./provider";
+import { createFtsSearch } from "./fts";
+import { createVectorSearch, embedText, productEmbedText, relatedByVector } from "./vector";
+import type { SearchResult } from "./provider";
+import { categoriesForProduct } from "../categories/db";
+import { getSetting } from "../settings/db";
 
-export type { SearchProvider, SearchResult } from './provider';
+export type { SearchProvider, SearchResult } from "./provider";
 
 /**
  * Effective search backend. The runtime setting (Admin → Settings → Search,
@@ -23,10 +18,10 @@ export type { SearchProvider, SearchResult } from './provider';
  * Falls back to the build-time default if the setting is unset or the table is
  * missing (pre-migration).
  */
-async function effectiveProvider(): Promise<'fts' | 'vector'> {
+async function effectiveProvider(): Promise<"fts" | "vector"> {
   try {
-    const runtime = await getSetting(env.DB, 'search_provider');
-    if (runtime === 'fts' || runtime === 'vector') return runtime;
+    const runtime = await getSetting(env.DB, "search_provider");
+    if (runtime === "fts" || runtime === "vector") return runtime;
   } catch {
     // settings table absent (pre-migration) → use the build-time default
   }
@@ -41,10 +36,7 @@ async function effectiveProvider(): Promise<'fts' | 'vector'> {
  */
 async function vectorReady(): Promise<boolean> {
   return (
-    (await effectiveProvider()) === 'vector' &&
-    !import.meta.env.DEV &&
-    !!env.AI &&
-    !!env.VECTORIZE
+    (await effectiveProvider()) === "vector" && !import.meta.env.DEV && !!env.AI && !!env.VECTORIZE
   );
 }
 
@@ -78,7 +70,11 @@ export async function getRelatedByVector(productId: number, limit = 4): Promise<
 async function storeRelatedIdsReady(productId: number, limit: number): Promise<void> {
   try {
     const related = await relatedByVector(env.VECTORIZE!, env.DB, productId, limit);
-    await setRelatedIds(env.DB, productId, related.map((p) => p.id));
+    await setRelatedIds(
+      env.DB,
+      productId,
+      related.map((p) => p.id),
+    );
   } catch {
     // Leave the column as-is; the page still renders with the category fallback.
   }
@@ -95,7 +91,7 @@ export async function storeRelatedIds(productId: number, limit = 4): Promise<voi
  * so stale entries drop out silently rather than 404ing a row.
  */
 export async function getRelatedStored(
-  product: Pick<Product, 'id' | 'related_ids'>,
+  product: Pick<Product, "id" | "related_ids">,
   limit = 4,
 ): Promise<Product[] | null> {
   const ids = parseRelatedIds(product.related_ids);
@@ -136,7 +132,7 @@ export async function getSearchProvider(): Promise<SearchProvider> {
           excludeIds: options.excludeIds,
         });
       } catch (err) {
-        console.error('Vector search failed; FTS only:', err);
+        console.error("Vector search failed; FTS only:", err);
       }
 
       const semantic = vectorRes.products;
@@ -167,7 +163,10 @@ export async function getSearchProvider(): Promise<SearchProvider> {
 export async function indexProduct(p: Product): Promise<void> {
   if (!(await vectorReady())) return;
   const cats = await categoriesForProduct(env.DB, p.id);
-  const text = productEmbedText(p, cats.map((c) => c.name));
+  const text = productEmbedText(
+    p,
+    cats.map((c) => c.name),
+  );
   const values = await embedText(env.AI!, getConfig().search.embeddingModel, text);
   await env.VECTORIZE!.upsert([{ id: String(p.id), values }]);
   // Refresh this product's neighbours now that its vector changed. Neighbours of
@@ -189,7 +188,14 @@ export async function indexProducts(products: Product[]): Promise<number> {
   const vectors = await Promise.all(
     products.map(async (p) => {
       const cats = await categoriesForProduct(env.DB, p.id);
-      const values = await embedText(env.AI!, model, productEmbedText(p, cats.map((c) => c.name)));
+      const values = await embedText(
+        env.AI!,
+        model,
+        productEmbedText(
+          p,
+          cats.map((c) => c.name),
+        ),
+      );
       return { id: String(p.id), values };
     }),
   );

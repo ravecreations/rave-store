@@ -1,7 +1,7 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { McpAgent } from 'agents/mcp';
-import { z } from 'zod';
-import { timingSafeEqual } from 'node:crypto';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpAgent } from "agents/mcp";
+import { z } from "zod";
+import { timingSafeEqual } from "node:crypto";
 
 // Reuse the storefront's query logic (the db modules import only TYPES from
 // workers-types, so they're clean to share across Workers — no duplication).
@@ -16,8 +16,8 @@ import {
   type Product,
   type AdminProduct,
   type ProductInput,
-} from '../../src/features/products/db';
-import { slugify, uniqueSlug } from '../../src/features/products/slug';
+} from "../../src/features/products/db";
+import { slugify, uniqueSlug } from "../../src/features/products/slug";
 import {
   listOrders,
   countOrders,
@@ -29,20 +29,20 @@ import {
   type Order,
   type OrderItem,
   type ShippingAddress,
-} from '../../src/features/orders/db';
-import { listRefunds, type Refund } from '../../src/features/refunds/db';
+} from "../../src/features/orders/db";
+import { listRefunds, type Refund } from "../../src/features/refunds/db";
 import {
   parsePublicId,
   parseOrderOrLegacyPublicId,
   publicIdToken,
-} from '../../src/features/ids/publicId';
-import type { D1Database } from '@cloudflare/workers-types';
+} from "../../src/features/ids/publicId";
+import type { D1Database } from "@cloudflare/workers-types";
 
 async function secureEqual(provided: string, expected: string): Promise<boolean> {
   const encoder = new TextEncoder();
   const [providedHash, expectedHash] = await Promise.all([
-    crypto.subtle.digest('SHA-256', encoder.encode(provided)),
-    crypto.subtle.digest('SHA-256', encoder.encode(expected)),
+    crypto.subtle.digest("SHA-256", encoder.encode(provided)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
   ]);
   return timingSafeEqual(new Uint8Array(providedHash), new Uint8Array(expectedHash));
 }
@@ -52,8 +52,8 @@ function result(data: unknown) {
   return {
     content: [
       {
-        type: 'text' as const,
-        text: typeof data === 'string' ? data : JSON.stringify(data, null, 2),
+        type: "text" as const,
+        text: typeof data === "string" ? data : JSON.stringify(data, null, 2),
       },
     ],
   };
@@ -78,7 +78,7 @@ function requirePublicId(publicId: string | null, rowId: number, kind: string): 
 
 function productDto(p: Product) {
   return {
-    id: requirePublicId(p.public_id, p.id, 'product'),
+    id: requirePublicId(p.public_id, p.id, "product"),
     slug: p.slug,
     name: p.name,
     description: p.description,
@@ -102,11 +102,11 @@ function adminProductDto(p: AdminProduct) {
  * orders (pre-prefix hex32/UUID public IDs) show the public ID itself.
  */
 function orderReference(publicId: string): string {
-  return publicIdToken(publicId, 'order') ?? publicId;
+  return publicIdToken(publicId, "order") ?? publicId;
 }
 
 function orderDto(o: Order) {
-  const id = requirePublicId(o.public_id, o.id, 'order');
+  const id = requirePublicId(o.public_id, o.id, "order");
   let shipAddress: ShippingAddress | null = null;
   if (o.ship_address) {
     try {
@@ -162,18 +162,18 @@ function refundDto(r: Refund) {
 // ---------------------------------------------------------------------------
 
 /** Resolve a `prod_…` public ID or slug (convenience) to a product row. */
-async function resolveProduct(db: D1Database, id: string): Promise<Product | null | 'numeric'> {
+async function resolveProduct(db: D1Database, id: string): Promise<Product | null | "numeric"> {
   const trimmed = id.trim();
-  if (/^\d+$/.test(trimmed)) return 'numeric';
-  const publicId = parsePublicId(trimmed, 'product');
+  if (/^\d+$/.test(trimmed)) return "numeric";
+  const publicId = parsePublicId(trimmed, "product");
   if (publicId) return getProductByPublicId(db, publicId);
   return getProductBySlug(db, trimmed);
 }
 
 const NUMERIC_PRODUCT_ERROR =
-  'Numeric row IDs are not accepted. Pass the prod_… public ID (or the slug).';
+  "Numeric row IDs are not accepted. Pass the prod_… public ID (or the slug).";
 const NUMERIC_ORDER_ERROR =
-  'Numeric row IDs are not accepted. Pass the ord_… public ID (or a legacy order public ID).';
+  "Numeric row IDs are not accepted. Pass the ord_… public ID (or a legacy order public ID).";
 
 /**
  * minshop MCP server — lets an assistant operate the store (read orders/products,
@@ -193,7 +193,7 @@ export interface SessionProps extends Record<string, unknown> {
 }
 
 export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps> {
-  server = new McpServer({ name: 'minshop', version: '2.0.0' });
+  server = new McpServer({ name: "minshop", version: "2.0.0" });
   initialState = {};
 
   /**
@@ -204,8 +204,8 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
    * buyer tool cannot leak admin data because it can only reach public URLs.
    */
   private async storefront(path: string, init?: RequestInit): Promise<unknown> {
-    const base = this.env.STOREFRONT_URL?.replace(/\/+$/, '');
-    if (!base) throw new Error('STOREFRONT_URL is not configured for this Worker.');
+    const base = this.env.STOREFRONT_URL?.replace(/\/+$/, "");
+    if (!base) throw new Error("STOREFRONT_URL is not configured for this Worker.");
     const response = await fetch(`${base}${path}`, init);
     const text = await response.text();
     try {
@@ -220,86 +220,89 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
 
     // --- buyer tier: always registered, no token required ---
     this.server.registerTool(
-      'browse_products',
+      "browse_products",
       {
         description:
-          'Search or list products a shopper can buy. Active, in-stock-aware public ' +
-          'catalog with prod_… public IDs, prices, and absolute URLs.',
+          "Search or list products a shopper can buy. Active, in-stock-aware public " +
+          "catalog with prod_… public IDs, prices, and absolute URLs.",
         inputSchema: {
-          q: z.string().optional().describe('Search query; omit to list'),
+          q: z.string().optional().describe("Search query; omit to list"),
           limit: z.number().int().min(1).max(100).optional(),
           offset: z.number().int().min(0).optional(),
         },
       },
       async ({ q, limit, offset }) => {
         const params = new URLSearchParams();
-        if (q) params.set('q', q);
-        if (limit != null) params.set('limit', String(limit));
-        if (offset != null) params.set('offset', String(offset));
+        if (q) params.set("q", q);
+        if (limit != null) params.set("limit", String(limit));
+        if (offset != null) params.set("offset", String(offset));
         const qs = params.toString();
-        return result(await this.storefront(`/api/products${qs ? `?${qs}` : ''}`));
+        return result(await this.storefront(`/api/products${qs ? `?${qs}` : ""}`));
       },
     );
 
     this.server.registerTool(
-      'get_product_details',
+      "get_product_details",
       {
-        description: 'Full public detail for one product, by its storefront slug.',
-        inputSchema: { slug: z.string().min(1).describe('Product slug from browse_products') },
+        description: "Full public detail for one product, by its storefront slug.",
+        inputSchema: { slug: z.string().min(1).describe("Product slug from browse_products") },
       },
       async ({ slug }) =>
         result(await this.storefront(`/api/products/${encodeURIComponent(slug)}`)),
     );
 
     this.server.registerTool(
-      'payment_methods',
+      "payment_methods",
       {
-        description: 'Which payment rails this store accepts, and its default.',
+        description: "Which payment rails this store accepts, and its default.",
         inputSchema: {},
       },
-      async () => result(await this.storefront('/api/checkout')),
+      async () => result(await this.storefront("/api/checkout")),
     );
 
     this.server.registerTool(
-      'create_checkout',
+      "create_checkout",
       {
         description:
-          'Start a purchase. Returns checkout_url, order_status_url, and — on the ' +
-          'lightning rail — a payable BOLT11 invoice an agent can settle with no human. ' +
-          'Poll order_status_url until it reports paid.',
+          "Start a purchase. Returns checkout_url, order_status_url, and — on the " +
+          "lightning rail — a payable BOLT11 invoice an agent can settle with no human. " +
+          "Poll order_status_url until it reports paid.",
         inputSchema: {
           items: z
             .array(
               z.object({
-                product_id: z.string().optional().describe('prod_… public ID'),
+                product_id: z.string().optional().describe("prod_… public ID"),
                 slug: z.string().optional(),
-                variant_id: z.string().optional().describe('var_… public ID'),
+                variant_id: z.string().optional().describe("var_… public ID"),
                 quantity: z.number().int().min(1).default(1),
               }),
             )
             .min(1),
-          method: z.string().optional().describe('One of payment_methods; omit for the default'),
+          method: z.string().optional().describe("One of payment_methods; omit for the default"),
           discount_code: z.string().optional(),
-          ship_to: z.record(z.string(), z.string()).optional().describe('Required for physical goods'),
+          ship_to: z
+            .record(z.string(), z.string())
+            .optional()
+            .describe("Required for physical goods"),
         },
       },
       async (args) =>
         result(
-          await this.storefront('/api/checkout', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
+          await this.storefront("/api/checkout", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
             body: JSON.stringify(args),
           }),
         ),
     );
 
     this.server.registerTool(
-      'check_order_status',
+      "check_order_status",
       {
         description:
-          'Poll a checkout using the order_status_url token from create_checkout. ' +
-          'Reports confirming/paid/refunded and any download URLs for digital goods.',
-        inputSchema: { token: z.string().min(1).describe('The otk_… token from order_status_url') },
+          "Poll a checkout using the order_status_url token from create_checkout. " +
+          "Reports confirming/paid/refunded and any download URLs for digital goods.",
+        inputSchema: { token: z.string().min(1).describe("The otk_… token from order_status_url") },
       },
       async ({ token }) =>
         result(await this.storefront(`/order/${encodeURIComponent(token)}/status`)),
@@ -310,11 +313,11 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
 
     // --- reads ---
     this.server.registerTool(
-      'list_products',
+      "list_products",
       {
         description:
-          'List products (admin view: includes inactive + units sold), one page at a time. ' +
-          'Each product id is its prod_… public ID.',
+          "List products (admin view: includes inactive + units sold), one page at a time. " +
+          "Each product id is its prod_… public ID.",
         inputSchema: {
           limit: z.number().int().min(1).max(200).default(50),
           offset: z.number().int().nonnegative().default(0),
@@ -330,24 +333,24 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
     );
 
     this.server.registerTool(
-      'get_product',
+      "get_product",
       {
-        description: 'Get one product by its prod_… public ID, or by slug as a convenience.',
-        inputSchema: { id: z.string().min(1).describe('prod_… public ID, or a slug') },
+        description: "Get one product by its prod_… public ID, or by slug as a convenience.",
+        inputSchema: { id: z.string().min(1).describe("prod_… public ID, or a slug") },
       },
       async ({ id }) => {
         const p = await resolveProduct(db, id);
-        if (p === 'numeric') return result(NUMERIC_PRODUCT_ERROR);
+        if (p === "numeric") return result(NUMERIC_PRODUCT_ERROR);
         return p ? result(productDto(p)) : result(`No product with id ${id}.`);
       },
     );
 
     this.server.registerTool(
-      'list_orders',
+      "list_orders",
       {
         description:
-          'List orders, newest first, one page at a time. Each order id is its ord_… public ID ' +
-          '(or a preserved legacy public ID); reference is the customer-facing order reference.',
+          "List orders, newest first, one page at a time. Each order id is its ord_… public ID " +
+          "(or a preserved legacy public ID); reference is the customer-facing order reference.",
         inputSchema: {
           limit: z.number().int().min(1).max(200).default(50),
           offset: z.number().int().nonnegative().default(0),
@@ -355,7 +358,7 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
       },
       async ({ limit, offset }) =>
         result({
-          orders: (await listOrders(db, limit, 'created_at DESC', offset)).map(orderDto),
+          orders: (await listOrders(db, limit, "created_at DESC", offset)).map(orderDto),
           total: await countOrders(db),
           limit,
           offset,
@@ -363,20 +366,20 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
     );
 
     this.server.registerTool(
-      'get_order',
+      "get_order",
       {
         description:
-          'Get an order plus its line items and refund history, by its ord_… public ID (legacy ' +
-          'public IDs are also accepted). Refunds are read-only: order.provider_refunded_cents ' +
-          'is the total the payment provider confirmed and order.external_refunded_cents is ' +
-          'what was recorded by hand; order.refunded_cents is their sum, capped at the order ' +
-          'total. Each refund amount_cents is a delta, not a running total, and is negative ' +
-          'for a correction.',
-        inputSchema: { id: z.string().min(1).describe('ord_… public ID (or legacy public ID)') },
+          "Get an order plus its line items and refund history, by its ord_… public ID (legacy " +
+          "public IDs are also accepted). Refunds are read-only: order.provider_refunded_cents " +
+          "is the total the payment provider confirmed and order.external_refunded_cents is " +
+          "what was recorded by hand; order.refunded_cents is their sum, capped at the order " +
+          "total. Each refund amount_cents is a delta, not a running total, and is negative " +
+          "for a correction.",
+        inputSchema: { id: z.string().min(1).describe("ord_… public ID (or legacy public ID)") },
       },
       async ({ id }) => {
         if (/^\d+$/.test(id.trim())) return result(NUMERIC_ORDER_ERROR);
-        const publicId = parseOrderOrLegacyPublicId(id, 'order');
+        const publicId = parseOrderOrLegacyPublicId(id, "order");
         if (!publicId) return result(`Invalid order id ${id} — expected an ord_… public ID.`);
         const order = await getOrderByPublicId(db, publicId);
         if (!order) return result(`No order with id ${id}.`);
@@ -389,15 +392,18 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
     );
 
     this.server.registerTool(
-      'order_stats',
-      { description: 'Store totals: order count, net revenue (cents), refunded (cents).', inputSchema: {} },
+      "order_stats",
+      {
+        description: "Store totals: order count, net revenue (cents), refunded (cents).",
+        inputSchema: {},
+      },
       async () => result(await orderStats(db)),
     );
 
     this.server.registerTool(
-      'daily_totals',
+      "daily_totals",
       {
-        description: 'Orders + net revenue per day for the last N days (UTC).',
+        description: "Orders + net revenue per day for the last N days (UTC).",
         inputSchema: { days: z.number().int().min(1).max(90).default(14) },
       },
       async ({ days }) => result(await dailyOrderTotals(db, days)),
@@ -405,17 +411,17 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
 
     // --- writes (gated by the bearer auth in the fetch handler) ---
     this.server.registerTool(
-      'create_product',
+      "create_product",
       {
         description:
-          'Create a product. price_cents is integer cents; slug is auto-generated from the ' +
-          'name. Returns the new prod_… public ID and slug.',
+          "Create a product. price_cents is integer cents; slug is auto-generated from the " +
+          "name. Returns the new prod_… public ID and slug.",
         inputSchema: {
           name: z.string().min(1),
           price_cents: z.number().int().nonnegative(),
           description: z.string().optional(),
           stock: z.number().int().nonnegative().default(0),
-          currency: z.string().default('usd'),
+          currency: z.string().default("usd"),
           active: z.boolean().default(true),
         },
       },
@@ -438,18 +444,18 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
         };
         const rowId = await createProduct(db, input);
         const created = await getProduct(db, rowId);
-        return result({ id: requirePublicId(created?.public_id ?? null, rowId, 'product'), slug });
+        return result({ id: requirePublicId(created?.public_id ?? null, rowId, "product"), slug });
       },
     );
 
     this.server.registerTool(
-      'update_product',
+      "update_product",
       {
         description:
-          'Update an existing product by its prod_… public ID (or slug). Only the fields you ' +
-          'pass change; the rest are kept.',
+          "Update an existing product by its prod_… public ID (or slug). Only the fields you " +
+          "pass change; the rest are kept.",
         inputSchema: {
-          id: z.string().min(1).describe('prod_… public ID, or a slug'),
+          id: z.string().min(1).describe("prod_… public ID, or a slug"),
           name: z.string().min(1).optional(),
           price_cents: z.number().int().nonnegative().optional(),
           description: z.string().nullable().optional(),
@@ -460,7 +466,7 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
       },
       async ({ id, name, price_cents, description, stock, currency, active }) => {
         const cur = await resolveProduct(db, id);
-        if (cur === 'numeric') return result(NUMERIC_PRODUCT_ERROR);
+        if (cur === "numeric") return result(NUMERIC_PRODUCT_ERROR);
         if (!cur) return result(`No product with id ${id}.`);
         const updated = await updateProduct(db, cur.id, {
           name,
@@ -470,32 +476,34 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
           stock,
           active: active === undefined ? undefined : Number(active),
         });
-        if (!updated) return { ...result('This product no longer exists.'), isError: true };
-        return result({ id: requirePublicId(cur.public_id, cur.id, 'product'), slug: cur.slug });
+        if (!updated) return { ...result("This product no longer exists."), isError: true };
+        return result({ id: requirePublicId(cur.public_id, cur.id, "product"), slug: cur.slug });
       },
     );
 
     this.server.registerTool(
-      'fulfill_order',
+      "fulfill_order",
       {
         description:
-          'Mark an order fulfilled (shipped) by its ord_… public ID (legacy public IDs are ' +
-          'also accepted), with optional carrier + tracking number.',
+          "Mark an order fulfilled (shipped) by its ord_… public ID (legacy public IDs are " +
+          "also accepted), with optional carrier + tracking number.",
         inputSchema: {
-          id: z.string().min(1).describe('ord_… public ID (or legacy public ID)'),
+          id: z.string().min(1).describe("ord_… public ID (or legacy public ID)"),
           carrier: z.string().optional(),
           tracking_number: z.string().optional(),
         },
       },
       async ({ id, carrier, tracking_number }) => {
         if (/^\d+$/.test(id.trim())) return result(NUMERIC_ORDER_ERROR);
-        const publicId = parseOrderOrLegacyPublicId(id, 'order');
+        const publicId = parseOrderOrLegacyPublicId(id, "order");
         if (!publicId) return result(`Invalid order id ${id} — expected an ord_… public ID.`);
         const order = await getOrderByPublicId(db, publicId);
         if (!order) return result(`No order with id ${id}.`);
         if (!(await fulfillOrder(db, order.id, carrier ?? null, tracking_number ?? null))) {
           return {
-            ...result('The order could not be fulfilled. Check whether it still exists and whether a label purchase is in progress or awaiting reconciliation.'),
+            ...result(
+              "The order could not be fulfilled. Check whether it still exists and whether a label purchase is in progress or awaiting reconciliation.",
+            ),
             isError: true,
           };
         }
@@ -510,14 +518,14 @@ export class StoreMcp extends McpAgent<Env, Record<string, never>, SessionProps>
 // for session resumption and deletion.
 export class BuyerStoreMcp extends StoreMcp {}
 
-const buyerMcp = BuyerStoreMcp.serve('/mcp', { binding: 'STORE_MCP_BUYER' });
-const operatorMcp = StoreMcp.serve('/mcp', { binding: 'STORE_MCP' });
+const buyerMcp = BuyerStoreMcp.serve("/mcp", { binding: "STORE_MCP_BUYER" });
+const operatorMcp = StoreMcp.serve("/mcp", { binding: "STORE_MCP" });
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname.startsWith('/mcp')) {
+    if (url.pathname.startsWith("/mcp")) {
       // Two tiers, decided here and carried into the session as props.
       //
       // No Authorization header  -> buyer tier: browse + checkout, public data only.
@@ -529,15 +537,15 @@ export default {
       // MCP_TOKEN unset means the operator tier is unavailable — the store can still
       // sell to agents. That is a deliberate change from failing the whole server
       // closed: the buyer tier exposes nothing the public JSON API does not.
-      const auth = request.headers.get('Authorization');
+      const auth = request.headers.get("Authorization");
       let operator = false;
       if (auth) {
         const expected = env.MCP_TOKEN;
         if (!expected) {
-          return new Response('Operator tools unavailable: MCP_TOKEN is not set.', { status: 503 });
+          return new Response("Operator tools unavailable: MCP_TOKEN is not set.", { status: 503 });
         }
         if (!(await secureEqual(auth, `Bearer ${expected}`))) {
-          return new Response('Unauthorized', { status: 401 });
+          return new Response("Unauthorized", { status: 401 });
         }
         operator = true;
       }
@@ -549,13 +557,13 @@ export default {
       // caller and lets one of them 429 all the others. Limit here, where the
       // address is real. Operator sessions hold a secret and are not throttled.
       if (!operator && env.MCP_RATE_LIMITER) {
-        const client = request.headers.get('cf-connecting-ip')?.trim() || 'unknown-client';
+        const client = request.headers.get("cf-connecting-ip")?.trim() || "unknown-client";
         try {
           const { success } = await env.MCP_RATE_LIMITER.limit({ key: `mcp:${client}` });
           if (!success) {
-            return new Response('Too many requests. Try again shortly.', {
+            return new Response("Too many requests. Try again shortly.", {
               status: 429,
-              headers: { 'retry-after': '60', 'cache-control': 'no-store' },
+              headers: { "retry-after": "60", "cache-control": "no-store" },
             });
           }
         } catch {
@@ -564,8 +572,8 @@ export default {
         }
       }
 
-      if (!operator && !('STORE_MCP_BUYER' in env)) {
-        return new Response('Buyer tools unavailable: configure STORE_MCP_BUYER.', { status: 503 });
+      if (!operator && !("STORE_MCP_BUYER" in env)) {
+        return new Response("Buyer tools unavailable: configure STORE_MCP_BUYER.", { status: 503 });
       }
 
       // The SDK reads session props off the ExecutionContext (the same channel the
@@ -576,8 +584,8 @@ export default {
     }
 
     return new Response(
-      'minshop MCP server — POST /mcp (streamable HTTP). Browse and checkout need no ' +
-        'auth; operator tools need Authorization: Bearer <MCP_TOKEN>.',
+      "minshop MCP server — POST /mcp (streamable HTTP). Browse and checkout need no " +
+        "auth; operator tools need Authorization: Bearer <MCP_TOKEN>.",
       { status: 404 },
     );
   },

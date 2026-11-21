@@ -1,5 +1,5 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 import {
   getProductByPublicId,
   listProductImages,
@@ -9,16 +9,16 @@ import {
   reorderProductImages,
   makeImagePrimary,
   syncPrimaryImage,
-} from '../../../../../features/products/db';
-import { clearVariantImage } from '../../../../../features/products/variants';
-import { validateImage } from '../../../../../features/products/image';
-import { optimizeUpload } from '../../../../../features/products/imageOptimize';
-import { uploadMedia } from '../../../../../features/media/upload';
-import { attachMediaToProduct, getMediaByPublicId } from '../../../../../features/media/db';
-import { getStorage } from '../../../../../features/storage';
-import { parsePublicId } from '../../../../../features/ids/publicId';
-import { CACHE_TAG } from '../../../../../features/cache/tags';
-import { purgeCacheTags } from '../../../../../features/cache/purge';
+} from "../../../../../features/products/db";
+import { clearVariantImage } from "../../../../../features/products/variants";
+import { validateImage } from "../../../../../features/products/image";
+import { optimizeUpload } from "../../../../../features/products/imageOptimize";
+import { uploadMedia } from "../../../../../features/media/upload";
+import { attachMediaToProduct, getMediaByPublicId } from "../../../../../features/media/db";
+import { getStorage } from "../../../../../features/storage";
+import { parsePublicId } from "../../../../../features/ids/publicId";
+import { CACHE_TAG } from "../../../../../features/cache/tags";
+import { purgeCacheTags } from "../../../../../features/cache/purge";
 
 export const prerender = false;
 
@@ -35,25 +35,24 @@ export const prerender = false;
 //   _action=alt      → set image `image_id`'s alt text
 //   _action=delete   → remove image `image_id` (association only)
 export const POST: APIRoute = async ({ request, params, redirect }) => {
-  const publicId = parsePublicId(params.id, 'product');
+  const publicId = parsePublicId(params.id, "product");
   const product = publicId ? await getProductByPublicId(env.DB, publicId) : null;
-  if (!publicId || !product) return new Response('Not found', { status: 404 });
+  if (!publicId || !product) return new Response("Not found", { status: 404 });
   const id = product.id;
 
   const back = (msg?: string) =>
     redirect(
-      `/admin/products/${publicId}/edit${msg ? `?error=${encodeURIComponent(msg)}` : ''}#gallery`,
+      `/admin/products/${publicId}/edit${msg ? `?error=${encodeURIComponent(msg)}` : ""}#gallery`,
       303,
     );
 
   const form = await request.formData();
-  const action = String(form.get('_action'));
+  const action = String(form.get("_action"));
   const storage = getStorage();
-  const purgeProduct = () =>
-    purgeCacheTags([CACHE_TAG.catalog, CACHE_TAG.product(publicId)]);
+  const purgeProduct = () => purgeCacheTags([CACHE_TAG.catalog, CACHE_TAG.product(publicId)]);
 
-  if (action === 'add') {
-    const files = form.getAll('images').filter((f): f is File => f instanceof File && f.size > 0);
+  if (action === "add") {
+    const files = form.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
     for (const file of files) {
       const imgErr = validateImage(file);
       if (imgErr) return back(imgErr);
@@ -71,10 +70,10 @@ export const POST: APIRoute = async ({ request, params, redirect }) => {
   // Reuse a file already in the library, addressed by its med_ public ID. Same
   // guarded insert as the upload path, so a stale picker selection can't attach
   // media that has since been deleted.
-  if (action === 'attach') {
-    const mediaPublicId = parsePublicId(form.get('media_id'), 'media');
+  if (action === "attach") {
+    const mediaPublicId = parsePublicId(form.get("media_id"), "media");
     const media = mediaPublicId ? await getMediaByPublicId(env.DB, mediaPublicId) : null;
-    if (!media) return back('Choose an image.');
+    if (!media) return back("Choose an image.");
     const attached = await attachMediaToProduct(env.DB, id, media.id);
     if (!attached.ok) return back(attached.error);
     await syncPrimaryImage(env.DB, id);
@@ -85,13 +84,13 @@ export const POST: APIRoute = async ({ request, params, redirect }) => {
   // The remaining actions address this product's own gallery rows by pimg_
   // public ID; resolve them to row ids here — the writes stay integer.
   const gallery = await listProductImages(env.DB, id);
-  const byPublicId = new Map(gallery.map((img) => [img.public_id ?? '', img]));
+  const byPublicId = new Map(gallery.map((img) => [img.public_id ?? "", img]));
 
   // Bulk reorder from drag-and-drop (fetch). No single image_id; returns 204.
-  if (action === 'reorder') {
+  if (action === "reorder") {
     const ids = form
-      .getAll('order')
-      .map((v) => parsePublicId(v, 'productImage'))
+      .getAll("order")
+      .map((v) => parsePublicId(v, "productImage"))
       .map((pid) => (pid ? byPublicId.get(pid)?.id : undefined))
       .filter((n): n is number => n !== undefined);
     await reorderProductImages(env.DB, id, ids);
@@ -100,32 +99,32 @@ export const POST: APIRoute = async ({ request, params, redirect }) => {
     return new Response(null, { status: 204 });
   }
 
-  const imagePublicId = parsePublicId(form.get('image_id'), 'productImage');
+  const imagePublicId = parsePublicId(form.get("image_id"), "productImage");
   const img = imagePublicId ? byPublicId.get(imagePublicId) : undefined;
-  if (!img) return back('Image not found.');
+  if (!img) return back("Image not found.");
   const imageId = img.id;
 
-  if (action === 'alt') {
-    await setProductImageAlt(env.DB, imageId, String(form.get('alt') ?? ''));
+  if (action === "alt") {
+    await setProductImageAlt(env.DB, imageId, String(form.get("alt") ?? ""));
     await purgeProduct();
     return back();
   }
 
-  if (action === 'primary') {
+  if (action === "primary") {
     await makeImagePrimary(env.DB, id, imageId);
     await purgeProduct();
     return back();
   }
 
-  if (action === 'move') {
-    const dir = form.get('direction') === 'up' ? 'up' : 'down';
+  if (action === "move") {
+    const dir = form.get("direction") === "up" ? "up" : "down";
     await moveProductImage(env.DB, imageId, dir);
     await syncPrimaryImage(env.DB, id);
     await purgeProduct();
     return back();
   }
 
-  if (action === 'delete') {
+  if (action === "delete") {
     // Drops the ASSOCIATION only. The file stays in the media library, where it
     // may still be used by another product, a page, or the logo — and where it
     // is deleted explicitly. Removing an image from one product must never
@@ -137,5 +136,5 @@ export const POST: APIRoute = async ({ request, params, redirect }) => {
     return back();
   }
 
-  return back('Unknown action.');
+  return back("Unknown action.");
 };

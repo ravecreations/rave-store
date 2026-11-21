@@ -1,7 +1,7 @@
-import { env } from 'cloudflare:workers';
-import type { D1Database } from '@cloudflare/workers-types';
-import { getSetting, setSetting } from '../settings/db';
-import { decryptSecret, encryptSecret } from './crypto';
+import { env } from "cloudflare:workers";
+import type { D1Database } from "@cloudflare/workers-types";
+import { getSetting, setSetting } from "../settings/db";
+import { decryptSecret, encryptSecret } from "./crypto";
 
 /**
  * Provider-key vault. Every sensitive provider key (Stripe, OpenNode, Resend,
@@ -13,24 +13,24 @@ import { decryptSecret, encryptSecret } from './crypto';
  * store runs demo-only. Keys are write-only from the UI: stored, never rendered back.
  */
 export type SecretName =
-  | 'stripe_secret_key'
-  | 'stripe_webhook_secret'
-  | 'opennode_api_key'
-  | 'shippo_api_key'
-  | 'resend_api_key'
-  | 'turnstile_secret_key'
-  | 'lnbits_api_key'
-  | 'phoenixd_password';
+  | "stripe_secret_key"
+  | "stripe_webhook_secret"
+  | "opennode_api_key"
+  | "shippo_api_key"
+  | "resend_api_key"
+  | "turnstile_secret_key"
+  | "lnbits_api_key"
+  | "phoenixd_password";
 
 export const SECRET_NAMES: readonly SecretName[] = [
-  'stripe_secret_key',
-  'stripe_webhook_secret',
-  'opennode_api_key',
-  'shippo_api_key',
-  'resend_api_key',
-  'turnstile_secret_key',
-  'lnbits_api_key',
-  'phoenixd_password',
+  "stripe_secret_key",
+  "stripe_webhook_secret",
+  "opennode_api_key",
+  "shippo_api_key",
+  "resend_api_key",
+  "turnstile_secret_key",
+  "lnbits_api_key",
+  "phoenixd_password",
 ];
 
 /** D1 settings-row key holding the encrypted blob for a secret. */
@@ -71,7 +71,7 @@ export async function setSecret(
   plaintext: string | null | undefined,
 ): Promise<void> {
   const k = kek();
-  if (!k) throw new Error('Cannot store keys: set the SECRETS_KEK Worker secret first.');
+  if (!k) throw new Error("Cannot store keys: set the SECRETS_KEK Worker secret first.");
   if (!plaintext) {
     await setSetting(db, encKey(name), null);
     return;

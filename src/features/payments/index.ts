@@ -1,32 +1,32 @@
-import { env } from 'cloudflare:workers';
-import type { PaymentProvider } from './provider';
-import type { StoreSettings } from '../settings/db';
-import { getStoreSettings } from '../settings/db';
-import { createStripeProvider } from './stripe';
-import { createLightningProvider } from './lightning-provider';
-import { getLightningBackend } from './lightning';
-import { createOpenNodeProvider } from './opennode';
-import { createDemoProvider } from './demo';
-import { getSecret, vaultReady } from '../secrets/store';
+import { env } from "cloudflare:workers";
+import type { PaymentProvider } from "./provider";
+import type { StoreSettings } from "../settings/db";
+import { getStoreSettings } from "../settings/db";
+import { createStripeProvider } from "./stripe";
+import { createLightningProvider } from "./lightning-provider";
+import { getLightningBackend } from "./lightning";
+import { createOpenNodeProvider } from "./opennode";
+import { createDemoProvider } from "./demo";
+import { getSecret, vaultReady } from "../secrets/store";
 
-export type { PaymentProvider } from './provider';
+export type { PaymentProvider } from "./provider";
 export {
   STRIPE_CHECKOUT_TTL_SECONDS,
   OPENNODE_CHECKOUT_TTL_SECONDS,
   RESERVATION_EXPIRY_GRACE_SECONDS,
-} from './provider';
-export { DEMO_CHECKOUT_TTL_SECONDS } from './demo';
+} from "./provider";
+export { DEMO_CHECKOUT_TTL_SECONDS } from "./demo";
 
 // 'demo' is a first-class method — a simulated checkout that's ALWAYS offered
 // (records a real, demo-tagged order). The real rails work only when configured.
-export type PaymentMethod = 'stripe' | 'lightning' | 'opennode' | 'demo';
-const ALL_METHODS: PaymentMethod[] = ['stripe', 'lightning', 'opennode'];
+export type PaymentMethod = "stripe" | "lightning" | "opennode" | "demo";
+const ALL_METHODS: PaymentMethod[] = ["stripe", "lightning", "opennode"];
 // The buttons always presented at checkout. Each real rail works if configured,
 // else its button leads to setup instructions; demo always works.
-const OFFERED: PaymentMethod[] = ['stripe', 'lightning', 'demo'];
+const OFFERED: PaymentMethod[] = ["stripe", "lightning", "demo"];
 
 export function isPaymentMethod(value: string): value is PaymentMethod {
-  return value === 'stripe' || value === 'lightning' || value === 'opennode' || value === 'demo';
+  return value === "stripe" || value === "lightning" || value === "opennode" || value === "demo";
 }
 
 /**
@@ -43,15 +43,15 @@ export function isMethodAvailable(
 ): boolean {
   const has = (name: string) => vault && settings.configuredSecrets.includes(name);
   switch (method) {
-    case 'stripe':
-      return has('stripe_secret_key') && has('stripe_webhook_secret');
-    case 'opennode':
-      return has('opennode_api_key');
-    case 'lightning':
-      return settings.lightningBackend === 'lnbits'
-        ? !!settings.lnbitsUrl && has('lnbits_api_key')
-        : !!settings.phoenixdUrl && has('phoenixd_password');
-    case 'demo':
+    case "stripe":
+      return has("stripe_secret_key") && has("stripe_webhook_secret");
+    case "opennode":
+      return has("opennode_api_key");
+    case "lightning":
+      return settings.lightningBackend === "lnbits"
+        ? !!settings.lnbitsUrl && has("lnbits_api_key")
+        : !!settings.phoenixdUrl && has("phoenixd_password");
+    case "demo":
       return true; // demo is always usable
   }
 }
@@ -78,20 +78,16 @@ export function defaultMethod(settings: StoreSettings): PaymentMethod {
  * (or has been switched off). May be EMPTY (admin disabled everything) — callers
  * hide checkout rather than falling back to a method nobody enabled.
  */
-export function enabledMethods(
-  settings: StoreSettings,
-  vault = vaultReady(),
-): PaymentMethod[] {
+export function enabledMethods(settings: StoreSettings, vault = vaultReady()): PaymentMethod[] {
   const off = new Set(settings.disabledPaymentMethods);
   const def = defaultMethod(settings);
-  const orderedReal =
-    def === 'demo' ? ALL_METHODS : [def, ...ALL_METHODS.filter((m) => m !== def)];
+  const orderedReal = def === "demo" ? ALL_METHODS : [def, ...ALL_METHODS.filter((m) => m !== def)];
   const real = orderedReal
-    .filter((m): m is Exclude<PaymentMethod, 'demo'> => m !== 'demo')
+    .filter((m): m is Exclude<PaymentMethod, "demo"> => m !== "demo")
     .filter((m) => isMethodAvailable(m, settings, vault))
     .filter((m) => !off.has(m));
-  if (off.has('demo')) return real;
-  return def === 'demo' ? ['demo', ...real] : [...real, 'demo'];
+  if (off.has("demo")) return real;
+  return def === "demo" ? ["demo", ...real] : [...real, "demo"];
 }
 
 /**
@@ -101,15 +97,12 @@ export function enabledMethods(
  * render a "set this up" link. May be EMPTY when the admin disables everything —
  * the cart/product pages then hide checkout entirely.
  */
-export function offeredMethods(
-  settings: StoreSettings,
-  vault = vaultReady(),
-): PaymentMethod[] {
+export function offeredMethods(settings: StoreSettings, vault = vaultReady()): PaymentMethod[] {
   const off = new Set(settings.disabledPaymentMethods);
   const extra = ALL_METHODS.filter(
     (m) => !OFFERED.includes(m) && isMethodAvailable(m, settings, vault),
   );
-  return (['stripe', 'lightning', ...extra, 'demo'] as PaymentMethod[]).filter((m) => !off.has(m));
+  return (["stripe", "lightning", ...extra, "demo"] as PaymentMethod[]).filter((m) => !off.has(m));
 }
 
 /**
@@ -122,21 +115,21 @@ export function offeredMethods(
 export async function getPaymentProvider(method?: PaymentMethod): Promise<PaymentProvider> {
   const settings = await getStoreSettings(env.DB);
   const m = method ?? settings.paymentProvider;
-  if (m === 'demo') return createDemoProvider(env.DB);
+  if (m === "demo") return createDemoProvider(env.DB);
   switch (m) {
-    case 'lightning':
+    case "lightning":
       // Self-hosted Lightning (phoenixd / LNbits) behind a self-rendered pay page.
       return createLightningProvider(env.DB, await getLightningBackend());
-    case 'opennode': {
-      const key = await getSecret(env.DB, 'opennode_api_key');
-      if (!key) throw new Error('OpenNode is not configured.');
+    case "opennode": {
+      const key = await getSecret(env.DB, "opennode_api_key");
+      if (!key) throw new Error("OpenNode is not configured.");
       return createOpenNodeProvider(env.DB, key, settings.opennodeApiUrl ?? undefined);
     }
-    case 'stripe':
+    case "stripe":
     default: {
-      const secretKey = await getSecret(env.DB, 'stripe_secret_key');
-      const webhookSecret = await getSecret(env.DB, 'stripe_webhook_secret');
-      if (!secretKey || !webhookSecret) throw new Error('Stripe is not fully configured.');
+      const secretKey = await getSecret(env.DB, "stripe_secret_key");
+      const webhookSecret = await getSecret(env.DB, "stripe_webhook_secret");
+      if (!secretKey || !webhookSecret) throw new Error("Stripe is not fully configured.");
       return createStripeProvider(env.DB, secretKey, webhookSecret);
     }
   }

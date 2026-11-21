@@ -80,13 +80,13 @@ A few decisions in here are worth reading even if you never deploy a store:
 
 ## Stack
 
-| Piece | Choice |
-|---|---|
+| Piece     | Choice                                                                             |
+| --------- | ---------------------------------------------------------------------------------- |
 | Framework | [Astro](https://astro.build) (SSR) on Cloudflare Workers via `@astrojs/cloudflare` |
-| Styling | Tailwind CSS v4 (`@tailwindcss/vite`) |
-| Data | Cloudflare D1 (SQLite) — products, orders |
-| Images | Cloudflare R2 — zero egress |
-| Payments | Stripe Checkout, Bitcoin Lightning (phoenixd / LNbits), OpenNode, or demo |
+| Styling   | Tailwind CSS v4 (`@tailwindcss/vite`)                                              |
+| Data      | Cloudflare D1 (SQLite) — products, orders                                          |
+| Images    | Cloudflare R2 — zero egress                                                        |
+| Payments  | Stripe Checkout, Bitcoin Lightning (phoenixd / LNbits), OpenNode, or demo          |
 
 ## Quick start (local)
 
@@ -136,7 +136,7 @@ Forks the repo, provisions D1 plus separate R2 buckets for public images (`minsh
 
 **Fields the deploy form shows:**
 
-- **`SECRETS_KEK`, `AUTH_SECRET`** (masked, required) — the only two values you must supply. Paste a fresh random value into *each* (they must differ): run `openssl rand -base64 32` twice. The button can't generate them, and masked-field hints are hidden, so a leading label field named **`USE_A_LONG_RANDOM_STRING_FOR_SECRETS_KEK_AND_AUTH_SECRET`** carries the instruction above them; its value is unused.
+- **`SECRETS_KEK`, `AUTH_SECRET`** (masked, required) — the only two values you must supply. Paste a fresh random value into _each_ (they must differ): run `openssl rand -base64 32` twice. The button can't generate them, and masked-field hints are hidden, so a leading label field named **`USE_A_LONG_RANDOM_STRING_FOR_SECRETS_KEK_AND_AUTH_SECRET`** carries the instruction above them; its value is unused.
 - **Location hint** — Cloudflare's own field for where to place the D1 database; pick the region nearest your shoppers.
 - **No store name / time zone / search fields** — those are runtime settings you configure in the setup wizard and **Admin → Settings** (stored in D1), not at deploy time. Defaults until then: `My Shop` / `UTC` / keyword (FTS) search.
 
@@ -211,11 +211,11 @@ domain, set `CANONICAL_ORIGIN` to its exact HTTPS origin, disable the
 {
   "workers_dev": false,
   "vars": {
-    "CANONICAL_ORIGIN": "https://shop.example.com"
+    "CANONICAL_ORIGIN": "https://shop.example.com",
   },
   "cache": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
 }
 ```
 
@@ -298,19 +298,19 @@ it is currently a beta interface.
 
 Checkout and the webhook depend on a `PaymentProvider` port (`src/features/payments`). Every rail is configured in **Admin → Settings → Payments** — its keys go in the encrypted vault, its config (default rail, node URLs) in D1 settings; a rail's checkout button appears automatically once its key is set, and the always-on **Demo** checkout works with zero keys. Demo reserves and decreases inventory like a real checkout, but never charges the buyer. The "default rail" selector picks which one is offered first:
 
-| Rail | What it is | Setup (all in Settings → Payments) |
-|---|---|---|
-| `stripe` *(default)* | Hosted card checkout | paste the secret key + webhook signing secret |
-| `lightning` | Bitcoin Lightning via a **self-hosted** node — minshop mints a BOLT11 invoice and renders its own `/pay` page (QR + `lightning:` link), then confirms settlement | run **phoenixd** or **LNbits** (below); enter its URL + key |
-| `opennode` | **Hosted** Lightning checkout (custodial processor) — redirect + webhook, like Stripe | paste the OpenNode API key |
+| Rail                 | What it is                                                                                                                                                       | Setup (all in Settings → Payments)                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `stripe` _(default)_ | Hosted card checkout                                                                                                                                             | paste the secret key + webhook signing secret               |
+| `lightning`          | Bitcoin Lightning via a **self-hosted** node — minshop mints a BOLT11 invoice and renders its own `/pay` page (QR + `lightning:` link), then confirms settlement | run **phoenixd** or **LNbits** (below); enter its URL + key |
+| `opennode`           | **Hosted** Lightning checkout (custodial processor) — redirect + webhook, like Stripe                                                                            | paste the OpenNode API key                                  |
 
 Two ports, nested: the outer `PaymentProvider` (stripe / lightning / opennode) and an inner `LightningBackend` (phoenixd / lnbits) shared by the self-rendered flow. Adding another node is one adapter file.
 
-**How settlement is trusted.** Lightning webhooks are treated as an untrusted *nudge* — on receipt minshop **re-polls the node** for the payment (the authority), so a forged webhook can't fake a sale. The `/pay` page also settles on load by polling, so it works even with no public webhook (e.g. local dev). Orders stay "paid-only": unpaid invoices live in a `pending_payments` table, never in `orders`.
+**How settlement is trusted.** Lightning webhooks are treated as an untrusted _nudge_ — on receipt minshop **re-polls the node** for the payment (the authority), so a forged webhook can't fake a sale. The `/pay` page also settles on load by polling, so it works even with no public webhook (e.g. local dev). Orders stay "paid-only": unpaid invoices live in a `pending_payments` table, never in `orders`.
 
 **Shipping (in-app rails).** When shipping is enabled, the Lightning, OpenNode, and Demo carts route through minshop's own `/checkout` page — a server-rendered address + shipping-option step priced from the Admin-managed zones (see [Shipping](#shipping-and-order-email)) — so the invoice total includes shipping and the address + email land on the order, same as Stripe. The Demo rail arrives with a sample address prefilled (it ships nowhere; the step exists to exercise the real rate configuration). Programmatic checkout accepts the same address as a `ship_to` object. (Stripe keeps its own hosted address/shipping collection, unchanged.)
 
-**Limitations (Lightning).** **Tax** and promo codes are still Stripe-Checkout features and are skipped on the Lightning path — to charge tax on a non-Stripe rail you'd compute it yourself (e.g. Stripe's Tax *Calculation* API) and add it to the total. No automatic refunds (Lightning can't reverse in place). Invoices are priced in sats from a BTC spot rate fetched at checkout (`payments.lightning.rateUrl`, default Coinbase — no key).
+**Limitations (Lightning).** **Tax** and promo codes are still Stripe-Checkout features and are skipped on the Lightning path — to charge tax on a non-Stripe rail you'd compute it yourself (e.g. Stripe's Tax _Calculation_ API) and add it to the total. No automatic refunds (Lightning can't reverse in place). Invoices are priced in sats from a BTC spot rate fetched at checkout (`payments.lightning.rateUrl`, default Coinbase — no key).
 
 ### Running phoenixd (recommended self-hosted backend)
 
@@ -321,7 +321,7 @@ Two ports, nested: the outer `PaymentProvider` (stripe / lightning / opennode) a
 3. In **Settings → Payments → Lightning**, pick the phoenixd node, enter its public URL, and paste the password — use the **`http-password-limited-access`** value (`~/.phoenix/phoenix.conf`): receive-only, can't spend.
 4. Point phoenixd's `webhook-url` at `https://<your-host>/api/webhook/lightning`.
 
-**LNbits** instead: pick LNbits in the same card and enter its URL + the wallet's *Invoice/read key*. **OpenNode**: paste the API key in its card and set the default rail to OpenNode.
+**LNbits** instead: pick LNbits in the same card and enter its URL + the wallet's _Invoice/read key_. **OpenNode**: paste the API key in its card and set the default rail to OpenNode.
 
 ## Architecture
 
@@ -388,12 +388,12 @@ Most settings are **runtime** — changed in **`/admin/settings`**, stored in a 
 
 A few **data-coupled** settings stay build-time (change + `bun run deploy`):
 
-| Setting | Where | Effect |
-|---|---|---|
-| Currency | `currency` in `src/store.config.ts` | One store-wide currency — prices are stored as integer minor-units bound to it, so it can't safely flip at runtime |
-| Image width | `images.maxWidth` in `src/store.config.ts` | Maximum width used when image optimization is enabled in Admin |
-| Order number | `orderNumber.{offset,step,randomStep}` in `src/store.config.ts` | Friendly customer-facing number derived from the internal id (e.g. `#1000`). `step` spaces them out; `randomStep` adds jitter to obscure the count (keep `step > randomStep`). The URL/security uses the random `public_id`, not this number |
-| Favicon | replace `public/favicon.svg` and regenerate `public/favicon.ico` | Browser tab icon with a legacy-client fallback |
+| Setting      | Where                                                            | Effect                                                                                                                                                                                                                                       |
+| ------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Currency     | `currency` in `src/store.config.ts`                              | One store-wide currency — prices are stored as integer minor-units bound to it, so it can't safely flip at runtime                                                                                                                           |
+| Image width  | `images.maxWidth` in `src/store.config.ts`                       | Maximum width used when image optimization is enabled in Admin                                                                                                                                                                               |
+| Order number | `orderNumber.{offset,step,randomStep}` in `src/store.config.ts`  | Friendly customer-facing number derived from the internal id (e.g. `#1000`). `step` spaces them out; `randomStep` adds jitter to obscure the count (keep `step > randomStep`). The URL/security uses the random `public_id`, not this number |
+| Favicon      | replace `public/favicon.svg` and regenerate `public/favicon.ico` | Browser tab icon with a legacy-client fallback                                                                                                                                                                                               |
 
 Change a value, then `bun run deploy`. Currency uses `Intl.NumberFormat`, so `usd → $`, `eur → €`, `gbp → £`, `jpy → ¥` (decimals handled per-currency).
 
@@ -470,7 +470,7 @@ hardening for a high-traffic paid deployment.
 
 Every upload lands in **Admin → Media**, whichever screen it came from — the product form, a product gallery, the page editor, or the logo picker. One file can then be reused anywhere without uploading it twice.
 
-The library **owns the files**. Products, pages, and the logo only record *how* a file is used:
+The library **owns the files**. Products, pages, and the logo only record _how_ a file is used:
 
 - Removing an image from a product gallery, deleting a product, replacing a photo, or deleting a page removes the **association only**. The file stays.
 - **Only Admin → Media deletes an object**, and it refuses while anything still references it — the grid links straight to the product, page, or Settings that is holding it.
@@ -478,7 +478,7 @@ The library **owns the files**. Products, pages, and the logo only record *how* 
 
 Uploads accept JPEG, PNG, WebP, and GIF up to 5 MB. **SVG is not accepted** — uploads are served from the store's own origin, where an SVG is a script-execution vector.
 
-Existing product images are adopted into the library by migration `0026` **without moving or renaming a single R2 object**. Those rows predate the library, so they carry no file type or size and the grid shows them as *Legacy image*; everything else about them works normally.
+Existing product images are adopted into the library by migration `0026` **without moving or renaming a single R2 object**. Those rows predate the library, so they carry no file type or size and the grid shows them as _Legacy image_; everything else about them works normally.
 
 Deleting a file is the one action with no undo. Removing an image from a product purges the affected storefront cache; if that purge is transiently unavailable and you immediately delete the file from Media, an older page can reference it until the bounded 10-minute TTL expires.
 
@@ -488,15 +488,15 @@ Merchant-authored content — About, Shipping, Returns, Privacy — written in M
 
 Nothing to enable: an empty table means the feature is simply unused, and no page links appear anywhere.
 
-**Editing.** The editor has three views — *Markdown*, *Split*, *Preview* — remembered between pages. Split shows the source beside a live preview that renders through the **same server-side renderer the storefront uses**, so what you see is what will ship rather than an approximation. Clicking anywhere in the preview selects the word that produced it in the source; clicking an image selects its whole `![alt](src)` span. A toolbar inserts headings, bold, italic, links, lists, quotes, code, and images chosen from the media library.
+**Editing.** The editor has three views — _Markdown_, _Split_, _Preview_ — remembered between pages. Split shows the source beside a live preview that renders through the **same server-side renderer the storefront uses**, so what you see is what will ship rather than an approximation. Clicking anywhere in the preview selects the word that produced it in the source; clicking an image selects its whole `![alt](src)` span. A toolbar inserts headings, bold, italic, links, lists, quotes, code, and images chosen from the media library.
 
 **Safety.** Raw HTML in a page body is **escaped, not parsed** (`html: false`). A page cannot inject a `<script>`, an iframe, or an event handler — not even from a compromised admin session — and markdown-it refuses `javascript:` and `vbscript:` link targets. This is a property of the parser, not a filter that has to be kept correct.
 
-**Layout presets.** Each page picks *Standard* (narrow, left title), *Editorial* (narrow, centred title), or *Wide* (full width, for size charts and image grids). Adding a preset is one entry in `src/features/pages/layouts.ts` — the dropdown, validation, storefront, and preview all derive from it, and no CSS is needed.
+**Layout presets.** Each page picks _Standard_ (narrow, left title), _Editorial_ (narrow, centred title), or _Wide_ (full width, for size charts and image grids). Adding a preset is one entry in `src/features/pages/layouts.ts` — the dropdown, validation, storefront, and preview all derive from it, and no CSS is needed.
 
 **Drafts and publishing.** A page is a draft until published. Drafts 404 on the storefront. Published pages appear in the footer (up to 50, ordered by title), the sitemap, and `llms.txt`.
 
-**Missing images.** Your text always saves. What is blocked is a *draft going live* with images that would render broken — the save is kept and publishing is refused with a warning naming the count. An already-published page is never silently unpublished over a missing image; it stays live and the warning tells you to fix it.
+**Missing images.** Your text always saves. What is blocked is a _draft going live_ with images that would render broken — the save is kept and publishing is refused with a warning naming the count. An already-published page is never silently unpublished over a missing image; it stays live and the warning tells you to fix it.
 
 **As the home page.** `/` shows the product list by default; **Admin → Settings → Home page** can point it at a published page or an active product instead. The catalog keeps its own URL at `/products`, and the header gains a **Shop** link to it whenever `/` has been taken over — otherwise the product list would be reachable only through search or a category. The chosen target is stored by id, so renaming it does not break the setting, and anything unresolvable — unpublished, deactivated, deleted — falls back to the product list rather than serving a 404 homepage. The content keeps one canonical URL (`/pages/<slug>` or `/products/<slug>`), so serving it at `/` does not create a second indexable copy.
 
@@ -512,14 +512,13 @@ to someone who hit the URL beforehand.
 > full store-owned surface — your theme, its templates and tokens, the
 > controls to keep, and the checks to run.
 
-
 Minshop ships selectable **themes** — as on other platforms, except a theme here is compiled source selected at build time, not a package installed at runtime. Brand color, accent, font, and corner radius are **design tokens** in your theme's `tokens.css` (`src/themes/<your-theme>/tokens.css`, a Tailwind v4 `@theme` block) — rebrand a clone by editing a few values, no component changes:
 
 ```css
 @theme {
-  --color-brand: #111827;        /* solid buttons, focus ring */
-  --color-brand-hover: #374151;  /* its hover shade */
-  --color-accent: #2563eb;       /* text links */
+  --color-brand: #111827; /* solid buttons, focus ring */
+  --color-brand-hover: #374151; /* its hover shade */
+  --color-accent: #2563eb; /* text links */
   --font-sans: ...;
 }
 ```
@@ -543,8 +542,8 @@ Collected while building (the kind of thing that costs an afternoon):
 
 Product search sits behind a `SearchProvider` seam (`features/search`). Choose the active backend in **Admin → Settings → Search** (or use the `SEARCH_PROVIDER` build-time fallback):
 
-- **`fts`** *(default)* — SQLite **FTS5** keyword search: $0, fully local, exact-match + typo-correction ("did you mean"). Nothing to set up.
-- **`vector`** — **semantic** search via **Workers AI** embeddings + **Vectorize**: matches by *meaning* ("something to drink coffee from" → mug), and powers similarity. Needs the AI + Vectorize bindings, so:
+- **`fts`** _(default)_ — SQLite **FTS5** keyword search: $0, fully local, exact-match + typo-correction ("did you mean"). Nothing to set up.
+- **`vector`** — **semantic** search via **Workers AI** embeddings + **Vectorize**: matches by _meaning_ ("something to drink coffee from" → mug), and powers similarity. Needs the AI + Vectorize bindings, so:
 
 ```sh
 # 1. Create the index (dimensions must match the model — bge-base = 768)
@@ -574,9 +573,9 @@ In local dev the magic link is also logged to the server console, so you can tes
 
 `mcp/` is a **standalone Cloudflare Worker** exposing the store as MCP tools, in **two tiers decided by whether a token is presented**:
 
-| Tier | Auth | What it can do |
-|---|---|---|
-| **Buyer** | none | Browse the catalog and complete a purchase |
+| Tier         | Auth                                | What it can do                                    |
+| ------------ | ----------------------------------- | ------------------------------------------------- |
+| **Buyer**    | none                                | Browse the catalog and complete a purchase        |
 | **Operator** | `Authorization: Bearer <MCP_TOKEN>` | The buyer tools, plus orders, revenue, and writes |
 
 **Connecting.** Both tiers are the same URL; the tier follows the header.
@@ -584,9 +583,11 @@ In local dev the magic link is also logged to the server console, so you can tes
 ```json
 {
   "mcpServers": {
-    "shop":  { "url": "https://your-mcp-host/mcp" },
-    "store": { "url": "https://your-mcp-host/mcp",
-               "headers": { "Authorization": "Bearer <MCP_TOKEN>" } }
+    "shop": { "url": "https://your-mcp-host/mcp" },
+    "store": {
+      "url": "https://your-mcp-host/mcp",
+      "headers": { "Authorization": "Bearer <MCP_TOKEN>" }
+    }
   }
 }
 ```
@@ -605,13 +606,13 @@ The tier is fixed when the session opens and carried into the Durable Object as 
 
 **Rate limiting lives here, not downstream.** The buyer tier is unauthenticated, and this Worker is the only component that sees the real caller — buyer tools reach the storefront over public HTTPS without forwarding `cf-connecting-ip`, so the storefront's per-IP limiter would collapse every MCP buyer into a single bucket: no per-caller throttle, and one busy client 429ing all the others. The `MCP_RATE_LIMITER` binding (30 requests/60s by default) keys on the address this Worker actually sees. Operator sessions hold a secret and are not throttled.
 
-**Discovery:** set `MCP_URL` on the *storefront* to this endpoint and it is advertised in `llms.txt`, so an agent that finds the store also finds the MCP server. Unset, nothing is advertised — the storefront cannot derive a separate Worker's hostname, and many instances never deploy one.
+**Discovery:** set `MCP_URL` on the _storefront_ to this endpoint and it is advertised in `llms.txt`, so an agent that finds the store also finds the MCP server. Unset, nothing is advertised — the storefront cannot derive a separate Worker's hostname, and many instances never deploy one.
 
 **Identifiers are prefixed public IDs** (server version 2.0.0, a breaking change from 1.x): every tool takes and returns public IDs, never database row IDs. `get_product`/`update_product` take a `prod_…` ID (a slug also works as a convenience); `get_order`/`fulfill_order` take an `ord_…` ID (legacy hex/UUID order public IDs are still accepted). Numeric IDs are rejected with a clear error. Results are projected DTOs: `id` is the public ID (refunds keep their preserved legacy UUIDs), orders carry a customer-facing `reference` (the token part of `ord_<token>`), and `create_product`/`update_product` return `{ id, slug }`.
 
 The two list tools accept `limit` and `offset` and return the page alongside `total`, `limit`, and `offset`, so clients can walk large catalogs and order histories without one oversized response.
 
-**Auth:** a bearer token gates the *operator* tier only. Set `MCP_TOKEN`; operator clients send `Authorization: Bearer <token>`. An invalid token is a 401, never a silent downgrade to buyer tools. With `MCP_TOKEN` unset the operator tier is unavailable (503 if a header is presented) while the buyer tier keeps working — a store with no token can still sell to agents. (Cloudflare's Workers OAuth Provider is the upgrade for scoped/multi-user operator access.)
+**Auth:** a bearer token gates the _operator_ tier only. Set `MCP_TOKEN`; operator clients send `Authorization: Bearer <token>`. An invalid token is a 401, never a silent downgrade to buyer tools. With `MCP_TOKEN` unset the operator tier is unavailable (503 if a header is presented) while the buyer tier keeps working — a store with no token can still sell to agents. (Cloudflare's Workers OAuth Provider is the upgrade for scoped/multi-user operator access.)
 
 When updating an existing MCP Worker, merge the `STORE_MCP_BUYER` binding and `v2` migration from `mcp/wrangler.template.jsonc` into its local Wrangler config. Buyer clients will start new sessions in the new namespace.
 
@@ -627,25 +628,29 @@ In production both Workers bind the same D1 (by `database_id`), so the MCP serve
 
 ## Agent API (catalog + checkout)
 
-A small, **public**, machine-readable API so an AI agent can **browse and buy** without scraping HTML or driving a browser — the "agent *shops* the store" counterpart to the MCP server's "agent *operates* the store". Clean JSON, absolute URLs, open CORS.
+A small, **public**, machine-readable API so an AI agent can **browse and buy** without scraping HTML or driving a browser — the "agent _shops_ the store" counterpart to the MCP server's "agent _operates_ the store". Clean JSON, absolute URLs, open CORS.
 
-| Method & path | Purpose |
-|---|---|
-| `GET /api/products` | Active catalog. `?q=` (uses the active **search** backend — semantic when on), `?limit=` (1–100, default 24), `?offset=` |
-| `GET /api/products/:slug` | One product as JSON (404 if missing/inactive) |
-| `GET /api/checkout` | Available payment methods and the current default |
-| `POST /api/checkout` | Programmatic checkout. Body `{ "items": [{ "product_id", "quantity" }] }` → `{ checkout_url, order_status_url, … }` |
-| `GET /order/:token/status` | Poll checkout state (`confirming`, `expired`, `paid`, or `refunded`) and receive paid item download URLs |
+| Method & path              | Purpose                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/products`        | Active catalog. `?q=` (uses the active **search** backend — semantic when on), `?limit=` (1–100, default 24), `?offset=` |
+| `GET /api/products/:slug`  | One product as JSON (404 if missing/inactive)                                                                            |
+| `GET /api/checkout`        | Available payment methods and the current default                                                                        |
+| `POST /api/checkout`       | Programmatic checkout. Body `{ "items": [{ "product_id", "quantity" }] }` → `{ checkout_url, order_status_url, … }`      |
+| `GET /order/:token/status` | Poll checkout state (`confirming`, `expired`, `paid`, or `refunded`) and receive paid item download URLs                 |
 
 Each product is self-describing — `id` is the prefixed public ID (`prod_…`; variants/extras on the detail route carry `var_…`/`xtra_…` IDs), price in both major + minor units:
 
 ```json
-{ "id": "prod_k7m2qx8vn6",
-  "slug": "merino-wool-beanie", "name": "Merino Wool Beanie",
+{
+  "id": "prod_k7m2qx8vn6",
+  "slug": "merino-wool-beanie",
+  "name": "Merino Wool Beanie",
   "price": { "amount": 32, "cents": 3200, "currency": "USD" },
-  "in_stock": true, "categories": ["Apparel"],
+  "in_stock": true,
+  "categories": ["Apparel"],
   "image": "https://…/images/products/merino-wool-beanie.webp",
-  "url": "https://…/products/merino-wool-beanie" }
+  "url": "https://…/products/merino-wool-beanie"
+}
 ```
 
 `POST /api/checkout` recalculates price and stock from D1. Item selectors are the catalog's public IDs: `product_id` (`prod_…`) is canonical, with `slug` accepted as a documented convenience; `variant_id` (`var_…`) and `extra_ids` (`["xtra_…"]`) come from the product detail route. **Numeric IDs are rejected with 400** (including the legacy numeric `extras` array). Set `method` to one of the values returned by `GET /api/checkout`; omitting it uses the default. Stripe and OpenNode return `flow: "redirect"` with a hosted `checkout_url`. Lightning returns `flow: "invoice"`, a browser/QR fallback in `checkout_url`, and a directly payable BOLT11 invoice:
@@ -654,8 +659,12 @@ Each product is self-describing — `id` is the prefixed public ID (`prod_…`; 
 {
   "method": "lightning",
   "items": [
-    { "product_id": "prod_k7m2qx8vn6", "quantity": 1,
-      "variant_id": "var_n9fx2km7qc", "extra_ids": ["xtra_q3vr8jm2np"] }
+    {
+      "product_id": "prod_k7m2qx8vn6",
+      "quantity": 1,
+      "variant_id": "var_n9fx2km7qc",
+      "extra_ids": ["xtra_q3vr8jm2np"]
+    }
   ],
   "ship_to": {
     "email": "buyer@example.com",

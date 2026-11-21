@@ -74,7 +74,7 @@ console.log("Loading current database state...");
 
 const catOutput = execSync(
   `bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --json --command 'SELECT id, name, slug, parent_id, public_id FROM categories;'`,
-  { encoding: "utf8" }
+  { encoding: "utf8" },
 );
 const categories = JSON.parse(catOutput)[0].results;
 const catByName = new Map();
@@ -86,7 +86,7 @@ for (const c of categories) {
 
 const prodOutput = execSync(
   `bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --json --command 'SELECT id, name, slug, public_id, price_cents, stock, description, active, image_key FROM products;'`,
-  { encoding: "utf8" }
+  { encoding: "utf8" },
 );
 const products = JSON.parse(prodOutput)[0].results;
 const productByName = new Map();
@@ -97,7 +97,7 @@ for (const p of products) {
 // Media items (keyed by original_name + size_bytes to identify existing files)
 const mediaOutput = execSync(
   `bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --json --command 'SELECT id, image_key, original_name, size_bytes FROM media;'`,
-  { encoding: "utf8" }
+  { encoding: "utf8" },
 );
 const existingMedia = JSON.parse(mediaOutput)[0].results;
 const mediaByOrigAndSize = new Map();
@@ -108,7 +108,7 @@ for (const m of existingMedia) {
 // Existing product galleries
 const galleryOutput = execSync(
   `bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --json --command 'SELECT pi.product_id, pi.image_key, pi.position, m.original_name, m.size_bytes FROM product_images pi JOIN media m ON m.image_key = pi.image_key;'`,
-  { encoding: "utf8" }
+  { encoding: "utf8" },
 );
 const galleryRows = JSON.parse(galleryOutput)[0].results;
 const galleryByProductId = new Map();
@@ -120,12 +120,13 @@ for (const g of galleryRows) {
 // Existing category assignments
 const prodCatOutput = execSync(
   `bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --json --command 'SELECT product_id, category_id FROM product_categories;'`,
-  { encoding: "utf8" }
+  { encoding: "utf8" },
 );
 const prodCatRows = JSON.parse(prodCatOutput)[0].results;
 const categoriesByProductId = new Map();
 for (const pc of prodCatRows) {
-  if (!categoriesByProductId.has(pc.product_id)) categoriesByProductId.set(pc.product_id, new Set());
+  if (!categoriesByProductId.has(pc.product_id))
+    categoriesByProductId.set(pc.product_id, new Set());
   categoriesByProductId.get(pc.product_id).add(pc.category_id);
 }
 
@@ -151,7 +152,8 @@ for (const f of jsonFiles) {
     }
   }
   if (Array.isArray(d.sub_categories)) {
-    const defaultParent = (d.categories && d.categories[0]) ? d.categories[0].trim() : (d.parent_category || null);
+    const defaultParent =
+      d.categories && d.categories[0] ? d.categories[0].trim() : d.parent_category || null;
     for (const sc of d.sub_categories) {
       const sub = sc.trim();
       if (!neededCategories.has(sub)) neededCategories.set(sub, defaultParent);
@@ -176,7 +178,7 @@ for (const [catName, parentName] of neededCategories.entries()) {
     const pubId = generatePublicId("category");
     const safeName = catName.replace(/'/g, "''");
     newCatStmts.push(
-      `INSERT OR IGNORE INTO categories (name, slug, parent_id, public_id) VALUES ('${safeName}', '${s}', ${parentId}, '${pubId}');`
+      `INSERT OR IGNORE INTO categories (name, slug, parent_id, public_id) VALUES ('${safeName}', '${s}', ${parentId}, '${pubId}');`,
     );
     catBySlug.set(s, true);
   }
@@ -185,13 +187,17 @@ for (const [catName, parentName] of neededCategories.entries()) {
 if (newCatStmts.length > 0) {
   console.log(`Adding ${newCatStmts.length} new categories...`);
   fs.writeFileSync("/tmp/sync_new_cats.sql", newCatStmts.join("\n"));
-  execSync(`bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --file /tmp/sync_new_cats.sql -y`, { stdio: "ignore" });
+  execSync(`bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --file /tmp/sync_new_cats.sql -y`, {
+    stdio: "ignore",
+  });
   fs.unlinkSync("/tmp/sync_new_cats.sql");
 
-  const reloaded = JSON.parse(execSync(
-    `bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --json --command 'SELECT id, name, slug, parent_id, public_id FROM categories;'`,
-    { encoding: "utf8" }
-  ))[0].results;
+  const reloaded = JSON.parse(
+    execSync(
+      `bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --json --command 'SELECT id, name, slug, parent_id, public_id FROM categories;'`,
+      { encoding: "utf8" },
+    ),
+  )[0].results;
   catByName.clear();
   for (const c of reloaded) catByName.set(c.name.toLowerCase().trim(), c);
 }
@@ -206,9 +212,9 @@ async function getMcpSession() {
   const initRes = await fetch(MCP_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${MCP_TOKEN}`,
+      Authorization: `Bearer ${MCP_TOKEN}`,
       "Content-Type": "application/json",
-      "Accept": "application/json, text/event-stream",
+      Accept: "application/json, text/event-stream",
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -231,9 +237,9 @@ async function callMcp(toolName, toolArgs) {
   const res = await fetch(MCP_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${MCP_TOKEN}`,
+      Authorization: `Bearer ${MCP_TOKEN}`,
       "Content-Type": "application/json",
-      "Accept": "application/json, text/event-stream",
+      Accept: "application/json, text/event-stream",
       "mcp-session-id": sid,
     },
     body: JSON.stringify({
@@ -321,9 +327,12 @@ for (const f of jsonFiles) {
 
     if (descChanged || priceChanged || stockChanged || activeChanged) {
       console.log(`[UPDATE] Product "${name}" (${existing.public_id}) has changed:`);
-      if (priceChanged) console.log(`  - Price: $${(existing.price_cents / 100).toFixed(2)} -> $${(price_cents / 100).toFixed(2)}`);
+      if (priceChanged)
+        console.log(
+          `  - Price: $${(existing.price_cents / 100).toFixed(2)} -> $${(price_cents / 100).toFixed(2)}`,
+        );
       if (stockChanged) console.log(`  - Stock: ${existing.stock} -> ${stock}`);
-      if (descChanged)  console.log(`  - Description updated`);
+      if (descChanged) console.log(`  - Description updated`);
       if (activeChanged) console.log(`  - Active status changed`);
 
       await callMcp("update_product", {
@@ -353,15 +362,19 @@ for (const f of jsonFiles) {
   });
 }
 
-console.log(`Products check summary: ${productsCreated} created, ${productsUpdated} updated, ${productsUnchanged} unchanged.\n`);
+console.log(
+  `Products check summary: ${productsCreated} created, ${productsUpdated} updated, ${productsUnchanged} unchanged.\n`,
+);
 
 // ---------------------------------------------------------------------------
 // 5. Ensure Product Row IDs & Verify Categories
 // ---------------------------------------------------------------------------
-const freshProds = JSON.parse(execSync(
-  `bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --json --command 'SELECT id, public_id, name, image_key FROM products;'`,
-  { encoding: "utf8" }
-))[0].results;
+const freshProds = JSON.parse(
+  execSync(
+    `bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --json --command 'SELECT id, public_id, name, image_key FROM products;'`,
+    { encoding: "utf8" },
+  ),
+)[0].results;
 const prodRowByLowerName = new Map();
 for (const p of freshProds) {
   prodRowByLowerName.set(p.name.toLowerCase().trim(), p);
@@ -388,14 +401,19 @@ for (const item of productLocalItems) {
   let same = desiredCatIds.size === existingCatIds.size;
   if (same) {
     for (const cid of desiredCatIds) {
-      if (!existingCatIds.has(cid)) { same = false; break; }
+      if (!existingCatIds.has(cid)) {
+        same = false;
+        break;
+      }
     }
   }
 
   if (!same) {
     categoryUpdatesSql.push(`DELETE FROM product_categories WHERE product_id = ${pRow.id};`);
     for (const cid of desiredCatIds) {
-      categoryUpdatesSql.push(`INSERT OR IGNORE INTO product_categories (product_id, category_id) VALUES (${pRow.id}, ${cid});`);
+      categoryUpdatesSql.push(
+        `INSERT OR IGNORE INTO product_categories (product_id, category_id) VALUES (${pRow.id}, ${cid});`,
+      );
     }
   }
 }
@@ -403,7 +421,9 @@ for (const item of productLocalItems) {
 if (categoryUpdatesSql.length > 0) {
   console.log(`Updating category associations for modified products...`);
   fs.writeFileSync("/tmp/sync_cats.sql", categoryUpdatesSql.join("\n"));
-  execSync(`bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --file /tmp/sync_cats.sql -y`, { stdio: "ignore" });
+  execSync(`bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --file /tmp/sync_cats.sql -y`, {
+    stdio: "ignore",
+  });
   fs.unlinkSync("/tmp/sync_cats.sql");
   console.log(`Synced ${categoryUpdatesSql.length} category link operations.`);
 }
@@ -428,7 +448,7 @@ for (const item of productLocalItems) {
   if (!pRow) continue;
 
   const currentGallery = galleryByProductId.get(pRow.id) || [];
-  const currentGalleryKeys = new Set(currentGallery.map(g => g.image_key));
+  const currentGalleryKeys = new Set(currentGallery.map((g) => g.image_key));
 
   let pos = 0;
   let primaryKeyCandidate = null;
@@ -445,7 +465,12 @@ for (const item of productLocalItems) {
     if (!mediaRecord) {
       // Truly brand new image -> prepare for upload to R2
       const ext = path.extname(imgName).replace(".", "").toLowerCase() || "png";
-      const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : "image/png";
+      const mime =
+        ext === "jpg" || ext === "jpeg"
+          ? "image/jpeg"
+          : ext === "webp"
+            ? "image/webp"
+            : "image/png";
       const idBytes = crypto.getRandomValues(new Uint8Array(10));
       const hex = [...idBytes].map((b) => b.toString(16).padStart(2, "0")).join("");
       const imageKey = `media/${hex}.${ext}`;
@@ -464,7 +489,7 @@ for (const item of productLocalItems) {
       const safeOrig = imgName.replace(/'/g, "''");
       mediaInserts.push(
         `INSERT INTO media (image_key, original_name, mime_type, size_bytes, width, height, public_id) ` +
-        `VALUES ('${imageKey}', '${safeOrig}', '${mime}', ${stat.size}, ${width}, ${height}, '${mediaPublicId}');`
+          `VALUES ('${imageKey}', '${safeOrig}', '${mime}', ${stat.size}, ${width}, ${height}, '${mediaPublicId}');`,
       );
 
       mediaRecord = { image_key: imageKey };
@@ -480,7 +505,7 @@ for (const item of productLocalItems) {
       const pimgPublicId = generatePublicId("productImage");
       galleryInserts.push(
         `INSERT OR IGNORE INTO product_images (product_id, image_key, position, public_id) ` +
-        `VALUES (${pRow.id}, '${mediaRecord.image_key}', ${pos}, '${pimgPublicId}');`
+          `VALUES (${pRow.id}, '${mediaRecord.image_key}', ${pos}, '${pimgPublicId}');`,
       );
       currentGalleryKeys.add(mediaRecord.image_key);
     }
@@ -491,7 +516,7 @@ for (const item of productLocalItems) {
   // Update primary image on product if missing or different from first gallery photo
   if (primaryKeyCandidate && pRow.image_key !== primaryKeyCandidate) {
     primaryUpdates.push(
-      `UPDATE products SET image_key = '${primaryKeyCandidate}' WHERE id = ${pRow.id};`
+      `UPDATE products SET image_key = '${primaryKeyCandidate}' WHERE id = ${pRow.id};`,
     );
     pRow.image_key = primaryKeyCandidate;
   }
@@ -514,7 +539,7 @@ if (uploadQueue.length > 0) {
       try {
         execSync(
           `bunx wrangler r2 object put "${R2_BUCKET}/${item.imageKey}" --file "${item.localPath}" ${remoteFlag}`,
-          { stdio: "ignore" }
+          { stdio: "ignore" },
         );
         uploaded++;
         if (uploaded % 10 === 0 || uploaded === uploadQueue.length) {
@@ -533,7 +558,9 @@ const d1ImageSql = [...mediaInserts, ...galleryInserts, ...primaryUpdates];
 if (d1ImageSql.length > 0) {
   console.log(`Applying ${d1ImageSql.length} image associations in D1...`);
   fs.writeFileSync("/tmp/sync_images.sql", d1ImageSql.join("\n"));
-  execSync(`bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --file /tmp/sync_images.sql -y`, { stdio: "ignore" });
+  execSync(`bunx wrangler d1 execute ${D1_DB} ${remoteFlag} --file /tmp/sync_images.sql -y`, {
+    stdio: "ignore",
+  });
   fs.unlinkSync("/tmp/sync_images.sql");
   console.log("Database image associations updated.");
 }

@@ -1,24 +1,24 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import type { StoreSettings } from '../settings/db';
-import { getProductBySlug, listProductImages, type Product } from '../products/db';
-import { listVariants, listExtras } from '../products/variants';
-import { categoriesForProduct, relatedProducts } from '../categories/db';
-import { getRelatedStored, storeRelatedIds } from '../search';
-import { enabledMethods } from '../payments';
-import { markdownExcerpt, renderMarkdown } from '../pages/markdown.ts';
-import { productImageSources, productImageUrl, type ImageDelivery } from '../products/image';
-import { stockState } from '../products/stock';
-import { catalogPath } from '../settings/home';
-import { formatMoney, toMajorUnits, currencyDecimals } from '../../money';
-import { requirePublicId } from '../catalog/serialize';
-import { buildProductCard } from './productCard';
+import type { D1Database } from "@cloudflare/workers-types";
+import type { StoreSettings } from "../settings/db";
+import { getProductBySlug, listProductImages, type Product } from "../products/db";
+import { listVariants, listExtras } from "../products/variants";
+import { categoriesForProduct, relatedProducts } from "../categories/db";
+import { getRelatedStored, storeRelatedIds } from "../search";
+import { enabledMethods } from "../payments";
+import { markdownExcerpt, renderMarkdown } from "../pages/markdown.ts";
+import { productImageSources, productImageUrl, type ImageDelivery } from "../products/image";
+import { stockState } from "../products/stock";
+import { catalogPath } from "../settings/home";
+import { formatMoney, toMajorUnits, currencyDecimals } from "../../money";
+import { requirePublicId } from "../catalog/serialize";
+import { buildProductCard } from "./productCard";
 import type {
   ProductDetailModel,
   ProductPurchaseModel,
   ProductSeoModel,
   StorefrontGalleryImage,
   StorefrontImage,
-} from './models';
+} from "./models";
 
 /**
  * The product-detail loader.
@@ -34,14 +34,14 @@ import type {
  */
 
 const RELATED_TARGET = 4;
-const HERO_SIZES = '(min-width: 768px) 528px, calc(100vw - 48px)';
-const THUMBNAIL_SIZES = '64px';
-const RELATED_CARD_SIZES = '(min-width: 1024px) 252px, calc(50vw - 36px)';
+const HERO_SIZES = "(min-width: 768px) 528px, calc(100vw - 48px)";
+const THUMBNAIL_SIZES = "64px";
+const RELATED_CARD_SIZES = "(min-width: 1024px) 252px, calc(50vw - 36px)";
 
 export type LoadedProductDetail =
-  | { status: 'not_found' }
+  | { status: "not_found" }
   | {
-      status: 'ok';
+      status: "ok";
       model: ProductDetailModel;
       seo: ProductSeoModel;
       purchase: ProductPurchaseModel;
@@ -64,14 +64,11 @@ export interface ProductDetailOptions {
   pathname: string;
 }
 
-function heroImage(
-  product: Product,
-  options: ProductDetailOptions,
-): StorefrontImage {
+function heroImage(product: Product, options: ProductDetailOptions): StorefrontImage {
   const sources = productImageSources(product.image_key, {
     baseUrl: options.imageBaseUrl,
     delivery: options.delivery,
-    usage: 'detail',
+    usage: "detail",
     sizes: HERO_SIZES,
   });
   return {
@@ -89,7 +86,7 @@ export async function loadProductDetail(
   options: ProductDetailOptions,
 ): Promise<LoadedProductDetail> {
   const product = options.slug ? await getProductBySlug(db, options.slug) : null;
-  if (!product) return { status: 'not_found' };
+  if (!product) return { status: "not_found" };
 
   // Independent once the product is known. Run together so an uncached render
   // pays one concurrent wait instead of a serial chain.
@@ -113,7 +110,7 @@ export async function loadProductDetail(
   const state = stockState(product.stock);
   // With variants the inventory unit is the variant, so availability comes from
   // them; otherwise from the product's own stock.
-  const soldOut = hasVariants ? variants.every((v) => v.stock <= 0) : state === 'out';
+  const soldOut = hasVariants ? variants.every((v) => v.stock <= 0) : state === "out";
 
   const variantPrices = variants.map((v) => v.price_cents);
   const displayPriceCents = hasVariants ? Math.min(...variantPrices) : product.price_cents;
@@ -126,7 +123,7 @@ export async function loadProductDetail(
   // nothing about how the store names its objects.
   const galleryAnchor = (imageId: number | null): string => {
     const image = imageId == null ? undefined : gallery.find((g) => g.id === imageId);
-    return image ? requirePublicId(image.public_id, image.id, 'product image') : '';
+    return image ? requirePublicId(image.public_id, image.id, "product image") : "";
   };
   const firstInStockIndex = variants.findIndex((v) => v.stock > 0);
 
@@ -134,22 +131,22 @@ export async function loadProductDetail(
     const hero = productImageSources(image.image_key, {
       baseUrl: options.imageBaseUrl,
       delivery: options.delivery,
-      usage: 'detail',
+      usage: "detail",
       sizes: HERO_SIZES,
     });
     const thumbnail = productImageSources(image.image_key, {
       baseUrl: options.imageBaseUrl,
       delivery: options.delivery,
-      usage: 'thumbnail',
+      usage: "thumbnail",
       sizes: THUMBNAIL_SIZES,
     });
     return {
-      anchor: requirePublicId(image.public_id, image.id, 'product image'),
+      anchor: requirePublicId(image.public_id, image.id, "product image"),
       // The first frame is what a shopper sees before scrolling, so it is the
       // page's LCP candidate. Saying so on the model keeps the rendered
       // attributes and the fade decision from drifting apart.
       hero: { ...hero, alt: image.alt || product.name, priority: index === 0 },
-      thumbnail: { ...thumbnail, alt: '', priority: false },
+      thumbnail: { ...thumbnail, alt: "", priority: false },
     };
   });
 
@@ -160,14 +157,14 @@ export async function loadProductDetail(
 
   const imagePath = productImageUrl(product.image_key, options.imageBaseUrl);
   const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
+    "@context": "https://schema.org",
+    "@type": "Product",
     name: product.name,
     // Structured data wants prose, not Markdown syntax characters.
     ...(product.description ? { description: markdownExcerpt(product.description, 5000) } : {}),
     image: new URL(imagePath, options.origin).href,
     offers: {
-      '@type': 'Offer',
+      "@type": "Offer",
       // The SAME currency the page displays. These previously disagreed: the
       // header formatted in the store currency while JSON-LD and the live-price
       // script announced the product row's, so a legacy row advertised one
@@ -177,13 +174,13 @@ export async function loadProductDetail(
         currencyDecimals(options.currency),
       ),
       priceCurrency: options.currency.toUpperCase(),
-      availability: soldOut ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+      availability: soldOut ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
       url: new URL(options.pathname, options.origin).href,
     },
   };
 
   return {
-    status: 'ok',
+    status: "ok",
     cacheTagIds: [product.public_id, ...related.map((candidate) => candidate.public_id)],
     backfillRelated:
       storedRelated === null ? () => storeRelatedIds(product.id, RELATED_TARGET) : null,
@@ -193,10 +190,10 @@ export async function loadProductDetail(
       description: product.description ? markdownExcerpt(product.description, 160) : null,
       imagePath,
       // Escape "<" so a product name can't break out of the <script> tag.
-      jsonLd: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+      jsonLd: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
     },
     model: {
-      id: requirePublicId(product.public_id, product.id, 'product'),
+      id: requirePublicId(product.public_id, product.id, "product"),
       name: product.name,
       description: product.description,
       descriptionHtml: product.description
@@ -209,7 +206,7 @@ export async function loadProductDetail(
       soldOut,
       // Deliberately never shown for a product with variants: the product-level
       // count means nothing when the variant is the inventory unit.
-      lowStock: !hasVariants && state === 'low',
+      lowStock: !hasVariants && state === "low",
       digitalDelivery: Boolean(product.file_key),
       categories: categories.map((category) => ({
         text: category.name,
@@ -226,12 +223,12 @@ export async function loadProductDetail(
         }),
       ),
       backHref: catalogPath(options.settings?.homePage),
-      error: options.searchParams.get('error'),
+      error: options.searchParams.get("error"),
     },
     purchase: {
-      productId: requirePublicId(product.public_id, product.id, 'product'),
-      cartAction: '/api/cart',
-      expressAction: '/express',
+      productId: requirePublicId(product.public_id, product.id, "product"),
+      cartAction: "/api/cart",
+      expressAction: "/express",
       hasOptions: hasVariants || extras.length > 0,
       soldOut,
       showAddToCart: cartEnabled,
@@ -240,7 +237,7 @@ export async function loadProductDetail(
       showBuyNow: buyNowEnabled && canCheckout,
       variantLabel: product.variant_label,
       variants: variants.map((variant, index) => ({
-        id: requirePublicId(variant.public_id, variant.id, 'variant'),
+        id: requirePublicId(variant.public_id, variant.id, "variant"),
         label: variant.label,
         formattedPrice: formatMoney(variant.price_cents, options.currency),
         priceCents: variant.price_cents,
@@ -249,7 +246,7 @@ export async function loadProductDetail(
         imageAnchor: galleryAnchor(variant.image_id),
       })),
       extras: extras.map((extra) => ({
-        id: requirePublicId(extra.public_id, extra.id, 'extra'),
+        id: requirePublicId(extra.public_id, extra.id, "extra"),
         label: extra.label,
         formattedPriceDelta: formatMoney(extra.price_delta_cents, options.currency),
         priceDeltaCents: extra.price_delta_cents,

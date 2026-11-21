@@ -13,7 +13,7 @@
 
 /** The synthesized free-shipping option's label. Shared with Admin validation so a
  *  configured rate can neither collide with it nor drift away from it. */
-export const FREE_SHIPPING_LABEL = 'Free shipping';
+export const FREE_SHIPPING_LABEL = "Free shipping";
 
 export interface ShippingOption {
   label: string;
@@ -25,7 +25,7 @@ export interface ShippingOption {
 }
 
 export interface FlatRatePricing {
-  type: 'flat';
+  type: "flat";
   amountCents: number;
 }
 
@@ -41,7 +41,7 @@ export interface WeightBand {
 }
 
 export interface WeightRatePricing {
-  type: 'weight';
+  type: "weight";
   bands: WeightBand[];
 }
 
@@ -52,7 +52,7 @@ export interface WeightRatePricing {
  * contact — but nothing will be posted anywhere.
  */
 export interface PickupRatePricing {
-  type: 'pickup';
+  type: "pickup";
   amountCents: number;
 }
 
@@ -97,7 +97,7 @@ export interface MissingWeightRecord {
 /** Why a configured service is not being offered. Diagnostics, not shopper copy. */
 export interface OmittedRate {
   label: string;
-  reason: 'missing_weight' | 'overweight';
+  reason: "missing_weight" | "overweight";
 }
 
 /**
@@ -127,8 +127,8 @@ export interface ShippingQuoteInput {
 
 /** Normalize either accepted rate shape to the internal discriminated one. */
 export function normalizeRate(rate: ConfiguredRate): ShippingRate {
-  if ('pricing' in rate) return rate;
-  return { label: rate.label, pricing: { type: 'flat', amountCents: rate.amountCents } };
+  if ("pricing" in rate) return rate;
+  return { label: rate.label, pricing: { type: "flat", amountCents: rate.amountCents } };
 }
 
 /** First zone whose `countries` includes `country`; falls back to a '*' zone. */
@@ -136,7 +136,7 @@ export function shippingZoneFor(country: string, zones: ShippingZone[]): Shippin
   const cc = country.toUpperCase();
   return (
     zones.find((z) => z.countries.some((c) => c.toUpperCase() === cc)) ??
-    zones.find((z) => z.countries.includes('*')) ??
+    zones.find((z) => z.countries.includes("*")) ??
     null
   );
 }
@@ -171,24 +171,24 @@ export function quoteShipping(cfg: ShippingConfig, input: ShippingQuoteInput): S
   // way to send the parcel, so it must not unlock free *delivery*.
   let deliveryResolved = false;
   for (const rate of rates) {
-    if (rate.pricing.type === 'pickup') {
+    if (rate.pricing.type === "pickup") {
       // Weight can never disqualify pickup: the shopper carries it.
       options.push({ label: rate.label, amountCents: rate.pricing.amountCents, pickup: true });
       continue;
     }
-    if (rate.pricing.type === 'flat') {
+    if (rate.pricing.type === "flat") {
       // Flat rates do not care about weight, so an unknown weight must not hide them.
       options.push({ label: rate.label, amountCents: rate.pricing.amountCents });
       deliveryResolved = true;
       continue;
     }
     if (shipmentWeightGrams == null) {
-      omitted.push({ label: rate.label, reason: 'missing_weight' });
+      omitted.push({ label: rate.label, reason: "missing_weight" });
       continue;
     }
     const band = bandFor(shipmentWeightGrams, rate.pricing.bands);
     if (!band) {
-      omitted.push({ label: rate.label, reason: 'overweight' });
+      omitted.push({ label: rate.label, reason: "overweight" });
       continue;
     }
     options.push({ label: rate.label, amountCents: band.amountCents });
@@ -226,7 +226,7 @@ export function computeShipping(
 export function allowedCountries(cfg: ShippingConfig): string[] {
   const set = new Set<string>();
   for (const z of cfg.zones) {
-    for (const c of z.countries) if (c !== '*') set.add(c.toUpperCase());
+    for (const c of z.countries) if (c !== "*") set.add(c.toUpperCase());
   }
   return [...set];
 }
@@ -241,14 +241,14 @@ export function zonesRequireWeight(cfg: ShippingConfig): boolean {
   if (!cfg.enabled) return false;
   return cfg.zones.some((zone) => {
     const rates = zone.rates.map(normalizeRate);
-    return rates.length > 0 && rates.every((rate) => rate.pricing.type === 'weight');
+    return rates.length > 0 && rates.every((rate) => rate.pricing.type === "weight");
   });
 }
 
 /** Whether any zone accepts the rest of the world. Providers expand this into their
  *  own supported-country list; the core calculator stays provider-neutral. */
 export function hasCatchAllZone(cfg: ShippingConfig): boolean {
-  return cfg.zones.some((z) => z.countries.includes('*'));
+  return cfg.zones.some((z) => z.countries.includes("*"));
 }
 
 /** The shipping port. ConfigRates is the default adapter; carrier rates can be another. */

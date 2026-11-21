@@ -8,7 +8,8 @@ export const DIGITAL_DELIVERY_RELEASE: DigitalDeliveryRelease = 4;
 
 export const lifecycleActive = (release: DigitalDeliveryRelease = DIGITAL_DELIVERY_RELEASE) =>
   release >= 2;
-export const entitlementWriterActive = (release: DigitalDeliveryRelease = DIGITAL_DELIVERY_RELEASE) =>
-  release >= 3;
+export const entitlementWriterActive = (
+  release: DigitalDeliveryRelease = DIGITAL_DELIVERY_RELEASE,
+) => release >= 3;
 export const attachmentActive = (release: DigitalDeliveryRelease = DIGITAL_DELIVERY_RELEASE) =>
   release >= 4;

@@ -24,7 +24,8 @@ export function readImageDimensions(bytes: Uint8Array): ImageDimensions | null {
 }
 
 const u16be = (b: Uint8Array, i: number) => (b[i] << 8) | b[i + 1];
-const u32be = (b: Uint8Array, i: number) => ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0;
+const u32be = (b: Uint8Array, i: number) =>
+  ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0;
 const u16le = (b: Uint8Array, i: number) => b[i] | (b[i + 1] << 8);
 const u24le = (b: Uint8Array, i: number) => b[i] | (b[i + 1] << 8) | (b[i + 2] << 16);
 
@@ -57,20 +58,23 @@ function webp(b: Uint8Array): ImageDimensions | null {
   }
   const chunk = String.fromCharCode(b[12], b[13], b[14], b[15]);
 
-  if (chunk === 'VP8 ' && b.length >= 30) {
+  if (chunk === "VP8 " && b.length >= 30) {
     // 0x9d 0x01 0x2a is the keyframe start code; sizes follow it.
     if (!matches(b, 23, [0x9d, 0x01, 0x2a])) return null;
     return valid(u16le(b, 26) & 0x3fff, u16le(b, 28) & 0x3fff);
   }
-  if (chunk === 'VP8L' && b.length >= 25) {
+  if (chunk === "VP8L" && b.length >= 25) {
     if (b[20] !== 0x2f) return null; // signature byte
     const bits = u32be(b, 21);
     // Stored little-endian as a bit field: 14 bits width, then 14 bits height.
-    const packed = ((bits >>> 24) & 0xff) | (((bits >>> 16) & 0xff) << 8) |
-      (((bits >>> 8) & 0xff) << 16) | ((bits & 0xff) << 24);
+    const packed =
+      ((bits >>> 24) & 0xff) |
+      (((bits >>> 16) & 0xff) << 8) |
+      (((bits >>> 8) & 0xff) << 16) |
+      ((bits & 0xff) << 24);
     return valid((packed & 0x3fff) + 1, ((packed >>> 14) & 0x3fff) + 1);
   }
-  if (chunk === 'VP8X' && b.length >= 30) {
+  if (chunk === "VP8X" && b.length >= 30) {
     return valid(u24le(b, 24) + 1, u24le(b, 27) + 1);
   }
   return null;

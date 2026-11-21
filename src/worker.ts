@@ -1,9 +1,9 @@
-import { handle } from '@astrojs/cloudflare/handler';
-import { env } from 'cloudflare:workers';
-import { sweepStaleNotifications } from './features/email/outbox';
-import { releaseExpiredReservations } from './features/orders/reservations';
-import { getSetting } from './features/settings/db';
-import { purgeStockProductCache } from './features/cache/purge';
+import { handle } from "@astrojs/cloudflare/handler";
+import { env } from "cloudflare:workers";
+import { sweepStaleNotifications } from "./features/email/outbox";
+import { releaseExpiredReservations } from "./features/orders/reservations";
+import { getSetting } from "./features/settings/db";
+import { purgeStockProductCache } from "./features/cache/purge";
 
 /**
  * Worker entrypoint.
@@ -33,7 +33,7 @@ async function runScheduledSweeps(): Promise<void> {
   try {
     await releaseExpiredReservations(db, 50, purgeStockProductCache);
   } catch (err) {
-    console.error('Scheduled reservation sweep failed:', err);
+    console.error("Scheduled reservation sweep failed:", err);
   }
 
   // Notification retry needs an origin to build order links with, and a cron
@@ -42,17 +42,17 @@ async function runScheduledSweeps(): Promise<void> {
   // anyway, so skipping is correct rather than merely safe. Never guess here —
   // a wrong origin sends real customers dead links.
   try {
-    const origin = await getSetting(db, 'store_url');
+    const origin = await getSetting(db, "store_url");
     if (origin) {
       await sweepStaleNotifications(db, origin);
     }
   } catch (err) {
-    console.error('Scheduled notification sweep failed:', err);
+    console.error("Scheduled notification sweep failed:", err);
   }
 }
 
 export default {
-  fetch: handle as unknown as ExportedHandler<Cloudflare.Env>['fetch'],
+  fetch: handle as unknown as ExportedHandler<Cloudflare.Env>["fetch"],
 
   // Each sweep catches its own errors, so one failing job never strands the
   // others. waitUntil keeps the invocation alive for the whole pass.
@@ -62,4 +62,3 @@ export default {
   // Bindings are reached through the `cloudflare:workers` env import (as every
   // other module here does), so the handler itself needs no Env generic.
 } satisfies ExportedHandler<Cloudflare.Env>;
-

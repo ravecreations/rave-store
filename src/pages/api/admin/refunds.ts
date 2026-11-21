@@ -1,10 +1,10 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
-import { applyRefundEvent } from '../../../features/refunds/sync';
-import { listUnmatchedRefundEvents, dismissRefundEvent } from '../../../features/refunds/db';
-import { sendRefundNotice } from '../../../features/refunds/notify';
-import { getOrder } from '../../../features/orders/db';
-import { getPaymentProvider, type PaymentMethod } from '../../../features/payments';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
+import { applyRefundEvent } from "../../../features/refunds/sync";
+import { listUnmatchedRefundEvents, dismissRefundEvent } from "../../../features/refunds/db";
+import { sendRefundNotice } from "../../../features/refunds/notify";
+import { getOrder } from "../../../features/orders/db";
+import { getPaymentProvider, type PaymentMethod } from "../../../features/payments";
 
 export const prerender = false;
 
@@ -12,20 +12,20 @@ export const prerender = false;
 // arrived from a provider but could not be matched to an order.
 export const POST: APIRoute = async ({ request, redirect }) => {
   const form = await request.formData();
-  const action = String(form.get('_action'));
-  const back = redirect('/admin/orders', 303);
+  const action = String(form.get("_action"));
+  const back = redirect("/admin/orders", 303);
   const fail = (msg: string) => redirect(`/admin/orders?error=${encodeURIComponent(msg)}`, 303);
 
   // Retry correlation. Safe to run repeatedly: applyRefundEvent is idempotent
   // on the event id, so a retry that now matches applies once and a retry that
   // still doesn't simply stays queued.
-  if (action === 'retry_refund_event') {
-    const eventId = String(form.get('event_id') ?? '').trim();
-    if (!eventId) return fail('Missing event.');
+  if (action === "retry_refund_event") {
+    const eventId = String(form.get("event_id") ?? "").trim();
+    if (!eventId) return fail("Missing event.");
 
     const events = await listUnmatchedRefundEvents(env.DB);
     const stored = events.find((e) => e.provider_event_id === eventId);
-    if (!stored) return fail('That event is no longer waiting to be reconciled.');
+    if (!stored) return fail("That event is no longer waiting to be reconciled.");
 
     // Retry runs the same correlation the webhook did, including the provider
     // session lookup — so a merchant clicking Retry after a transient provider
@@ -43,7 +43,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       stored.provider,
       {
         eventId: stored.provider_event_id,
-        providerPaymentId: stored.provider_payment_id ?? '',
+        providerPaymentId: stored.provider_payment_id ?? "",
         providerChargeId: stored.provider_charge_id,
         cumulativeRefundedCents: stored.cumulative_refunded_cents,
         currency: stored.currency,
@@ -51,42 +51,38 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       { findSessionIdForPayment },
     );
 
-    if (outcome.status === 'unmatched') {
+    if (outcome.status === "unmatched") {
       return fail(
-        'Still no order matches that payment. It stays queued — you can retry again after the order’s payment ID is filled in.',
+        "Still no order matches that payment. It stays queued — you can retry again after the order’s payment ID is filled in.",
       );
     }
     // Admin URLs carry the order's public ID, never the row id the correlation
     // worked with internally — one read to translate at the boundary.
     const orderUrl = async (orderId: number) => {
       const order = await getOrder(env.DB, orderId);
-      return order?.public_id ? `/admin/orders/${order.public_id}` : '/admin/orders';
+      return order?.public_id ? `/admin/orders/${order.public_id}` : "/admin/orders";
     };
-    if (outcome.status === 'review') {
+    if (outcome.status === "review") {
       return redirect(await orderUrl(outcome.orderId), 303);
     }
     // A retry that finally applies the refund is the moment the money is first
     // recognised, so this is the path that owes the customer the notice — the
     // original webhook could not send one because it never matched an order.
-    if (outcome.status === 'processed') {
-      await sendRefundNotice(
-        outcome.orderId,
-        outcome.deltaCents,
-        new URL(request.url).origin,
-      );
+    if (outcome.status === "processed") {
+      await sendRefundNotice(outcome.orderId, outcome.deltaCents, new URL(request.url).origin);
     }
     return redirect(await orderUrl(outcome.orderId), 303);
   }
 
   // Close out an event a human has resolved. Retrying a conflicting event only
   // reproduces the conflict, so without this the queue never empties.
-  if (action === 'dismiss_refund_event') {
-    const eventId = String(form.get('event_id') ?? '').trim();
-    if (!eventId) return fail('Missing event.');
+  if (action === "dismiss_refund_event") {
+    const eventId = String(form.get("event_id") ?? "").trim();
+    if (!eventId) return fail("Missing event.");
     const dismissed = await dismissRefundEvent(
       env.DB,
       eventId,
-      String(form.get('_admin') ?? '') || null,
+      String(form.get("_admin") ?? "") || null,
     );
     if (!dismissed) {
       // Two very different reasons for the same empty result: the event was
@@ -98,8 +94,8 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       );
       return fail(
         stillQueued
-          ? 'This refund has not been matched to an order yet, so it can’t be dismissed — that would hide money that really moved. Use Retry once the order’s payment ID exists.'
-          : 'That event is no longer waiting to be reconciled.',
+          ? "This refund has not been matched to an order yet, so it can’t be dismissed — that would hide money that really moved. Use Retry once the order’s payment ID exists."
+          : "That event is no longer waiting to be reconciled.",
       );
     }
     return back;

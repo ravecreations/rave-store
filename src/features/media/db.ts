@@ -1,5 +1,5 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import { withPublicId } from '../ids/publicId.ts';
+import type { D1Database } from "@cloudflare/workers-types";
+import { withPublicId } from "../ids/publicId.ts";
 
 export interface Media {
   id: number;
@@ -19,33 +19,29 @@ export interface Media {
 export const MEDIA_PAGE_SIZE = 48;
 
 export async function getMedia(db: D1Database, id: number): Promise<Media | null> {
-  return db.prepare('SELECT * FROM media WHERE id = ?').bind(id).first<Media>();
+  return db.prepare("SELECT * FROM media WHERE id = ?").bind(id).first<Media>();
 }
 
 export async function getMediaByKey(db: D1Database, key: string): Promise<Media | null> {
-  return db.prepare('SELECT * FROM media WHERE image_key = ?').bind(key).first<Media>();
+  return db.prepare("SELECT * FROM media WHERE image_key = ?").bind(key).first<Media>();
 }
 
 /** Media by its prefixed public ID (boundary resolution; null if missing). */
 export async function getMediaByPublicId(db: D1Database, publicId: string): Promise<Media | null> {
-  return db.prepare('SELECT * FROM media WHERE public_id = ?').bind(publicId).first<Media>();
+  return db.prepare("SELECT * FROM media WHERE public_id = ?").bind(publicId).first<Media>();
 }
 
 /** Newest first, matching the media_created index so pagination is stable. */
-export async function listMedia(
-  db: D1Database,
-  limit: number,
-  offset: number,
-): Promise<Media[]> {
+export async function listMedia(db: D1Database, limit: number, offset: number): Promise<Media[]> {
   const { results } = await db
-    .prepare('SELECT * FROM media ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?')
+    .prepare("SELECT * FROM media ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?")
     .bind(limit, offset)
     .all<Media>();
   return results ?? [];
 }
 
 export async function countMedia(db: D1Database): Promise<number> {
-  const row = await db.prepare('SELECT COUNT(*) AS c FROM media').first<{ c: number }>();
+  const row = await db.prepare("SELECT COUNT(*) AS c FROM media").first<{ c: number }>();
   return row?.c ?? 0;
 }
 
@@ -62,7 +58,7 @@ export async function findMediaByKeys(db: D1Database, keys: string[]): Promise<M
   const found: Media[] = [];
   for (let i = 0; i < keys.length; i += MAX_BOUND_PARAMS) {
     const chunk = keys.slice(i, i + MAX_BOUND_PARAMS);
-    const placeholders = chunk.map(() => '?').join(', ');
+    const placeholders = chunk.map(() => "?").join(", ");
     const { results } = await db
       .prepare(`SELECT * FROM media WHERE image_key IN (${placeholders})`)
       .bind(...chunk)
@@ -83,7 +79,7 @@ export async function createMediaRecord(
     height?: number | null;
   },
 ): Promise<Media> {
-  return withPublicId('media', async (publicId) => {
+  return withPublicId("media", async (publicId) => {
     const row = await db
       .prepare(
         `INSERT INTO media (image_key, original_name, mime_type, size_bytes, width, height, public_id)
@@ -100,7 +96,7 @@ export async function createMediaRecord(
         publicId,
       )
       .first<Media>();
-    if (!row) throw new Error('media insert returned no row');
+    if (!row) throw new Error("media insert returned no row");
     return row;
   });
 }
@@ -117,10 +113,7 @@ export async function createMediaRecord(
  * Returns the deleted key, or null when the row was referenced or already gone —
  * the caller resolves which for the error message.
  */
-export async function deleteMediaRecord(
-  db: D1Database,
-  id: number,
-): Promise<string | null> {
+export async function deleteMediaRecord(db: D1Database, id: number): Promise<string | null> {
   const row = await db
     .prepare(
       `DELETE FROM media
@@ -145,9 +138,7 @@ export async function deleteMediaRecord(
   return row?.image_key ?? null;
 }
 
-export type AttachResult =
-  | { ok: true; imageKey: string }
-  | { ok: false; error: string };
+export type AttachResult = { ok: true; imageKey: string } | { ok: false; error: string };
 
 /**
  * Append a media item to a product's gallery, guarded on the media row still
@@ -164,7 +155,7 @@ export async function attachMediaToProduct(
   productId: number,
   mediaId: number,
 ): Promise<AttachResult> {
-  const row = await withPublicId('productImage', (publicId) =>
+  const row = await withPublicId("productImage", (publicId) =>
     db
       .prepare(
         `INSERT INTO product_images (product_id, image_key, position, public_id)
@@ -190,8 +181,8 @@ export async function attachMediaToProduct(
   // Nothing inserted — say which of the two guards refused.
   const media = await getMedia(db, mediaId);
   return media
-    ? { ok: false, error: 'That image is already in this product’s gallery.' }
-    : { ok: false, error: 'That image is no longer in the media library.' };
+    ? { ok: false, error: "That image is already in this product’s gallery." }
+    : { ok: false, error: "That image is no longer in the media library." };
 }
 
 /**
@@ -228,7 +219,7 @@ export function pageMediaClaimStatements(
   pageId: number,
   mediaIds: number[],
 ): D1PreparedStatement[] {
-  const statements = [db.prepare('DELETE FROM page_media WHERE page_id = ?').bind(pageId)];
+  const statements = [db.prepare("DELETE FROM page_media WHERE page_id = ?").bind(pageId)];
 
   // One statement per CHUNK, not per image. D1 allows only 50 queries per
   // Worker invocation on the Free plan, and a save already spends several on
@@ -237,7 +228,7 @@ export function pageMediaClaimStatements(
   // on exactly the plan this project targets.
   for (let i = 0; i < mediaIds.length; i += MAX_BOUND_PARAMS - 1) {
     const chunk = mediaIds.slice(i, i + MAX_BOUND_PARAMS - 1); // -1 for pageId
-    const placeholders = chunk.map(() => '?').join(', ');
+    const placeholders = chunk.map(() => "?").join(", ");
     statements.push(
       // INSERT ... SELECT FROM media so a concurrently deleted row is skipped
       // rather than written as a dangling association.

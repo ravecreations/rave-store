@@ -1,6 +1,6 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import type { Product } from '../products/db';
-import { withPublicId } from '../ids/publicId.ts';
+import type { D1Database } from "@cloudflare/workers-types";
+import type { Product } from "../products/db";
+import { withPublicId } from "../ids/publicId.ts";
 
 export interface Category {
   id: number;
@@ -32,18 +32,16 @@ export interface CategoryFields {
 }
 
 export async function listCategories(db: D1Database): Promise<Category[]> {
-  const { results } = await db
-    .prepare('SELECT * FROM categories ORDER BY name')
-    .all<Category>();
+  const { results } = await db.prepare("SELECT * FROM categories ORDER BY name").all<Category>();
   return results ?? [];
 }
 
 export async function getCategory(db: D1Database, id: number): Promise<Category | null> {
-  return db.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first<Category>();
+  return db.prepare("SELECT * FROM categories WHERE id = ?").bind(id).first<Category>();
 }
 
 export async function getCategoryBySlug(db: D1Database, slug: string): Promise<Category | null> {
-  return db.prepare('SELECT * FROM categories WHERE slug = ?').bind(slug).first<Category>();
+  return db.prepare("SELECT * FROM categories WHERE slug = ?").bind(slug).first<Category>();
 }
 
 /** Category by its prefixed public ID (boundary resolution; null if missing). */
@@ -51,7 +49,10 @@ export async function getCategoryByPublicId(
   db: D1Database,
   publicId: string,
 ): Promise<Category | null> {
-  return db.prepare('SELECT * FROM categories WHERE public_id = ?').bind(publicId).first<Category>();
+  return db
+    .prepare("SELECT * FROM categories WHERE public_id = ?")
+    .bind(publicId)
+    .first<Category>();
 }
 
 /** Categories for many public IDs in one boundary-resolution read. */
@@ -60,7 +61,7 @@ export async function getCategoriesByPublicIds(
   publicIds: string[],
 ): Promise<Category[]> {
   if (publicIds.length === 0) return [];
-  const placeholders = publicIds.map(() => '?').join(',');
+  const placeholders = publicIds.map(() => "?").join(",");
   const { results } = await db
     .prepare(`SELECT * FROM categories WHERE public_id IN (${placeholders})`)
     .bind(...publicIds)
@@ -69,9 +70,11 @@ export async function getCategoriesByPublicIds(
 }
 
 export async function createCategory(db: D1Database, c: CategoryFields): Promise<number> {
-  return withPublicId('category', async (publicId) => {
+  return withPublicId("category", async (publicId) => {
     const row = await db
-      .prepare('INSERT INTO categories (name, slug, parent_id, public_id) VALUES (?, ?, ?, ?) RETURNING id')
+      .prepare(
+        "INSERT INTO categories (name, slug, parent_id, public_id) VALUES (?, ?, ?, ?) RETURNING id",
+      )
       .bind(c.name, c.slug, c.parent_id, publicId)
       .first<{ id: number }>();
     return row!.id;
@@ -80,7 +83,7 @@ export async function createCategory(db: D1Database, c: CategoryFields): Promise
 
 export async function updateCategory(db: D1Database, id: number, c: CategoryFields): Promise<void> {
   await db
-    .prepare('UPDATE categories SET name = ?, slug = ?, parent_id = ? WHERE id = ?')
+    .prepare("UPDATE categories SET name = ?, slug = ?, parent_id = ? WHERE id = ?")
     .bind(c.name, c.slug, c.parent_id, id)
     .run();
 }
@@ -94,9 +97,9 @@ export async function deleteCategory(db: D1Database, id: number): Promise<void> 
   const cat = await getCategory(db, id);
   if (!cat) return;
   await db.batch([
-    db.prepare('UPDATE categories SET parent_id = ? WHERE parent_id = ?').bind(cat.parent_id, id),
-    db.prepare('DELETE FROM product_categories WHERE category_id = ?').bind(id),
-    db.prepare('DELETE FROM categories WHERE id = ?').bind(id),
+    db.prepare("UPDATE categories SET parent_id = ? WHERE parent_id = ?").bind(cat.parent_id, id),
+    db.prepare("DELETE FROM product_categories WHERE category_id = ?").bind(id),
+    db.prepare("DELETE FROM categories WHERE id = ?").bind(id),
   ]);
 }
 
@@ -136,7 +139,7 @@ export async function ancestors(db: D1Database, id: number): Promise<Category[]>
 /** Direct product count per category id (products tagged with that category). */
 export async function productCounts(db: D1Database): Promise<Map<number, number>> {
   const { results } = await db
-    .prepare('SELECT category_id, COUNT(*) AS n FROM product_categories GROUP BY category_id')
+    .prepare("SELECT category_id, COUNT(*) AS n FROM product_categories GROUP BY category_id")
     .all<{ category_id: number; n: number }>();
   const counts = new Map<number, number>();
   for (const r of results ?? []) counts.set(r.category_id, r.n);
@@ -165,7 +168,7 @@ export async function categoriesForProducts(
   const byProduct = new Map<number, Category[]>(ids.map((id) => [id, []]));
   if (ids.length === 0) return byProduct;
 
-  const placeholders = ids.map(() => '?').join(',');
+  const placeholders = ids.map(() => "?").join(",");
   const { results } = await db
     .prepare(
       `SELECT pc.product_id,
@@ -217,7 +220,7 @@ export async function productsInSharedCategories(
   limit: number,
 ): Promise<Product[]> {
   if (productIds.length === 0 || limit <= 0) return [];
-  const ph = productIds.map(() => '?').join(',');
+  const ph = productIds.map(() => "?").join(",");
   const { results } = await db
     .prepare(
       `SELECT DISTINCT p.* FROM products p
@@ -242,12 +245,10 @@ export async function setProductCategories(
   categoryIds: number[],
 ): Promise<void> {
   const stmts = [
-    db.prepare('DELETE FROM product_categories WHERE product_id = ?').bind(productId),
+    db.prepare("DELETE FROM product_categories WHERE product_id = ?").bind(productId),
     ...categoryIds.map((cid) =>
       db
-        .prepare(
-          'INSERT OR IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)',
-        )
+        .prepare("INSERT OR IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)")
         .bind(productId, cid),
     ),
   ];
@@ -260,7 +261,7 @@ export async function productsInCategory(
   categoryId: number,
   limit: number,
   offset = 0,
-  orderBy = 'created_at DESC',
+  orderBy = "created_at DESC",
 ): Promise<Product[]> {
   const { results } = await db
     .prepare(
@@ -281,10 +282,7 @@ export async function productsInCategory(
 }
 
 /** Total active products in a category + its descendants (for pagination). */
-export async function countProductsInCategory(
-  db: D1Database,
-  categoryId: number,
-): Promise<number> {
+export async function countProductsInCategory(db: D1Database, categoryId: number): Promise<number> {
   const row = await db
     .prepare(
       `WITH RECURSIVE sub(id) AS (
@@ -303,9 +301,7 @@ export async function countProductsInCategory(
 
 /** Direct children of a category (or top-level when parentId is null). */
 export function childrenOf(cats: Category[], parentId: number | null): Category[] {
-  return cats
-    .filter((c) => c.parent_id === parentId)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return cats.filter((c) => c.parent_id === parentId).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Build a nested tree from the flat list. */

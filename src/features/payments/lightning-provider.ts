@@ -1,21 +1,21 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database } from "@cloudflare/workers-types";
 import type {
   PaymentProvider,
   CreateCheckoutParams,
   CheckoutResult,
   WebhookResult,
-} from './provider';
-import { WebhookLookupError } from './provider';
-import type { ShippingAddress } from '../orders/db';
-import type { LightningBackend } from './lightning/backend';
-import { getBtcRate, fiatCentsToSats } from './lightning/rate';
+} from "./provider";
+import { WebhookLookupError } from "./provider";
+import type { ShippingAddress } from "../orders/db";
+import type { LightningBackend } from "./lightning/backend";
+import { getBtcRate, fiatCentsToSats } from "./lightning/rate";
 import {
   createPendingPayment,
   getPendingByHash,
   isPendingInvoicePaid,
   pendingToPaidOrder,
-} from './lightning/pending';
-import { getConfig } from '../../config';
+} from "./lightning/pending";
+import { getConfig } from "../../config";
 
 export interface MintLightningOrderInput {
   origin: string;
@@ -27,7 +27,7 @@ export interface MintLightningOrderInput {
   shippingCents?: number;
   shippingLabel?: string | null;
   shippingWeightGrams?: number | null;
-  deliveryMethod?: 'pickup' | 'shipping' | null;
+  deliveryMethod?: "pickup" | "shipping" | null;
   /** Pre-serialized JSON cart snapshot: [{ id, q, n, p }]. */
   itemsJson?: string | null;
   email?: string | null;
@@ -46,7 +46,13 @@ export async function mintLightningOrder(
   db: D1Database,
   backend: LightningBackend,
   input: MintLightningOrderInput,
-): Promise<{ payUrl: string; bolt11: string; amountSat: number; paymentHash: string; expiresAt: string }> {
+): Promise<{
+  payUrl: string;
+  bolt11: string;
+  amountSat: number;
+  paymentHash: string;
+  expiresAt: string;
+}> {
   const cfg = getConfig();
   const ln = cfg.payments.lightning;
   const shippingCents = input.shippingCents ?? 0;
@@ -138,15 +144,15 @@ export function createLightningProvider(
     async verifyWebhook(payload: string, headers: Headers): Promise<WebhookResult> {
       const evt = await backend.verifyWebhook(payload, headers);
       const pending = await getPendingByHash(db, evt.paymentHash);
-      if (pending?.backend !== backend.name) return { type: 'lightning.unknown' };
+      if (pending?.backend !== backend.name) return { type: "lightning.unknown" };
 
       // The webhook is an untrusted nudge — re-poll the node for the truth.
       const status = await backend.getIncoming(pending.payment_hash).catch((cause) => {
-        throw new WebhookLookupError('Lightning invoice lookup unavailable', { cause });
+        throw new WebhookLookupError("Lightning invoice lookup unavailable", { cause });
       });
-      if (!isPendingInvoicePaid(pending, status)) return { type: 'lightning.unconfirmed' };
+      if (!isPendingInvoicePaid(pending, status)) return { type: "lightning.unconfirmed" };
       return {
-        type: 'lightning.paid',
+        type: "lightning.paid",
         settlePendingPaymentId: evt.paymentHash,
         order: pendingToPaidOrder(pending),
       };

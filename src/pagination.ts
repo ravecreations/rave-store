@@ -14,7 +14,7 @@ export function requestedPage(
   searchParams: URLSearchParams,
   maxPage = Number.MAX_SAFE_INTEGER,
 ): number {
-  const raw = Number(searchParams.get('page'));
+  const raw = Number(searchParams.get("page"));
   return Number.isInteger(raw) && raw >= 1 ? Math.min(raw, maxPage) : 1;
 }
 
@@ -25,7 +25,7 @@ export function queryHref(
 ): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== '') sp.set(k, String(v));
+    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
   }
   const qs = sp.toString();
   return qs ? `${base}?${qs}` : base;

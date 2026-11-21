@@ -1,27 +1,25 @@
-const AUTH_SCHEME = 'MinshopDeploy';
-const MESSAGE_SCOPE = 'cache-deploy-purge:v1';
+const AUTH_SCHEME = "MinshopDeploy";
+const MESSAGE_SCOPE = "cache-deploy-purge:v1";
 export const DEPLOY_PURGE_WINDOW_SECONDS = 5 * 60;
 
 const encoder = new TextEncoder();
 
 async function hmacHex(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
+    { name: "HMAC", hash: "SHA-256" },
     false,
-    ['sign'],
+    ["sign"],
   );
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
-  return [...new Uint8Array(signature)]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+  return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function constantTimeEqual(left: string, right: string): Promise<boolean> {
   const [leftHash, rightHash] = await Promise.all([
-    crypto.subtle.digest('SHA-256', encoder.encode(left)),
-    crypto.subtle.digest('SHA-256', encoder.encode(right)),
+    crypto.subtle.digest("SHA-256", encoder.encode(left)),
+    crypto.subtle.digest("SHA-256", encoder.encode(right)),
   ]);
   const leftBytes = new Uint8Array(leftHash);
   const rightBytes = new Uint8Array(rightHash);

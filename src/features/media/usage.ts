@@ -1,4 +1,4 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database } from "@cloudflare/workers-types";
 
 /** Everywhere one media item is currently used. Empty everywhere = deletable. */
 export interface MediaUsage {
@@ -57,10 +57,10 @@ export async function mediaUsageForIds(
   for (const id of ids) usage.set(id, emptyUsage());
   if (ids.length === 0) return usage;
 
-  const placeholders = ids.map(() => '?').join(', ');
+  const placeholders = ids.map(() => "?").join(", ");
   const [products, pages, logo] = await db.batch<Record<string, unknown>>([
-    db.prepare(PRODUCT_USAGE_SQL.replace('%IDS%', placeholders)).bind(...ids),
-    db.prepare(PAGE_USAGE_SQL.replace('%IDS%', placeholders)).bind(...ids),
+    db.prepare(PRODUCT_USAGE_SQL.replace("%IDS%", placeholders)).bind(...ids),
+    db.prepare(PAGE_USAGE_SQL.replace("%IDS%", placeholders)).bind(...ids),
     db.prepare("SELECT value FROM settings WHERE key = 'logo_image_key'"),
   ]);
 
@@ -72,7 +72,11 @@ export async function mediaUsageForIds(
   }>) {
     usage
       .get(row.media_id)
-      ?.products.push({ id: row.product_id, public_id: row.product_public_id, name: row.product_name });
+      ?.products.push({
+        id: row.product_id,
+        public_id: row.product_public_id,
+        name: row.product_name,
+      });
   }
   for (const row of (pages.results ?? []) as Array<{
     media_id: number;
@@ -89,7 +93,7 @@ export async function mediaUsageForIds(
   if (logoKey) {
     // One extra lookup for the single logo key, not one per row.
     const row = await db
-      .prepare('SELECT id FROM media WHERE image_key = ?')
+      .prepare("SELECT id FROM media WHERE image_key = ?")
       .bind(logoKey)
       .first<{ id: number }>();
     const entry = row ? usage.get(row.id) : undefined;
@@ -108,7 +112,7 @@ export async function mediaUsage(db: D1Database, id: number): Promise<MediaUsage
 export interface UsageLink {
   href: string;
   label: string;
-  kind: 'product' | 'page' | 'logo';
+  kind: "product" | "page" | "logo";
   /** Tooltip. Per-kind rather than templated: "the logo that uses this image"
    *  reads wrong, because the logo IS the use rather than a thing having one. */
   title: string;
@@ -124,23 +128,23 @@ export function usageLinks(usage: MediaUsage): UsageLink[] {
     ...usage.products.map((p) => ({
       href: `/admin/products/${p.public_id}/edit`,
       label: p.name,
-      kind: 'product' as const,
+      kind: "product" as const,
       title: `Edit ${p.name}`,
     })),
     ...usage.pages.map((p) => ({
       href: `/admin/pages/${p.public_id}/edit`,
       label: p.title,
-      kind: 'page' as const,
+      kind: "page" as const,
       title: `Edit the ${p.title} page`,
     })),
     // The logo is a setting, not a row, so it links to where it is chosen.
     ...(usage.logo
       ? [
           {
-            href: '/admin/settings',
-            label: 'Store logo',
-            kind: 'logo' as const,
-            title: 'Change the logo in Settings',
+            href: "/admin/settings",
+            label: "Store logo",
+            kind: "logo" as const,
+            title: "Change the logo in Settings",
           },
         ]
       : []),
@@ -152,18 +156,18 @@ export function describeUsage(usage: MediaUsage): string {
   const parts: string[] = [];
   if (usage.products.length > 0) {
     parts.push(
-      `${usage.products.length} product${usage.products.length === 1 ? '' : 's'} (${usage.products
+      `${usage.products.length} product${usage.products.length === 1 ? "" : "s"} (${usage.products
         .map((p) => p.name)
-        .join(', ')})`,
+        .join(", ")})`,
     );
   }
   if (usage.pages.length > 0) {
     parts.push(
-      `${usage.pages.length} page${usage.pages.length === 1 ? '' : 's'} (${usage.pages
+      `${usage.pages.length} page${usage.pages.length === 1 ? "" : "s"} (${usage.pages
         .map((p) => p.title)
-        .join(', ')})`,
+        .join(", ")})`,
     );
   }
-  if (usage.logo) parts.push('the store logo');
-  return parts.join(' and ');
+  if (usage.logo) parts.push("the store logo");
+  return parts.join(" and ");
 }

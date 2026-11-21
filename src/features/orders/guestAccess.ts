@@ -1,7 +1,7 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import { generateAccessToken, isAccessToken } from '../ids/token.ts';
-import { generatePublicId, isPublicIdConflict } from '../ids/publicId.ts';
-import { guestLinkReissueKind } from '../email/outboxStore.ts';
+import type { D1Database } from "@cloudflare/workers-types";
+import { generateAccessToken, isAccessToken } from "../ids/token.ts";
+import { generatePublicId, isPublicIdConflict } from "../ids/publicId.ts";
+import { guestLinkReissueKind } from "../email/outboxStore.ts";
 
 /**
  * Guest-access registry (order_guest_access) — the ONE authoritative mapping
@@ -33,11 +33,11 @@ export async function claimOrderIdentity(
   db: D1Database,
 ): Promise<{ publicId: string; accessToken: string }> {
   for (let i = 0; i < 3; i++) {
-    const publicId = generatePublicId('order');
+    const publicId = generatePublicId("order");
     const accessToken = generateAccessToken();
     try {
       await db
-        .prepare('INSERT INTO order_guest_access (order_public_id, access_token) VALUES (?, ?)')
+        .prepare("INSERT INTO order_guest_access (order_public_id, access_token) VALUES (?, ?)")
         .bind(publicId, accessToken)
         .run();
       return { publicId, accessToken };
@@ -45,7 +45,7 @@ export async function claimOrderIdentity(
       if (!isPublicIdConflict(err)) throw err; // either side collided → fresh pair
     }
   }
-  throw new Error('order identity collision retry exhausted');
+  throw new Error("order identity collision retry exhausted");
 }
 
 /** Resolve a presented token to its mapping. Strict shape check first. */
@@ -55,7 +55,7 @@ export async function resolveAccessToken(
 ): Promise<GuestAccess | null> {
   if (!isAccessToken(token)) return null;
   return db
-    .prepare('SELECT * FROM order_guest_access WHERE access_token = ?')
+    .prepare("SELECT * FROM order_guest_access WHERE access_token = ?")
     .bind(token)
     .first<GuestAccess>();
 }
@@ -65,7 +65,7 @@ export async function getGuestAccess(
   orderPublicId: string,
 ): Promise<GuestAccess | null> {
   return db
-    .prepare('SELECT * FROM order_guest_access WHERE order_public_id = ?')
+    .prepare("SELECT * FROM order_guest_access WHERE order_public_id = ?")
     .bind(orderPublicId)
     .first<GuestAccess>();
 }
@@ -124,7 +124,7 @@ export async function reissueGuestAccess(
       if (!isPublicIdConflict(err)) throw err;
     }
   }
-  throw new Error('guest access token collision retry exhausted');
+  throw new Error("guest access token collision retry exhausted");
 }
 
 /**
@@ -140,7 +140,7 @@ export async function guestOrderUrl(
   baseUrl: string,
 ): Promise<string | null> {
   if (!orderPublicId) return null;
-  if (!orderPublicId.startsWith('ord_')) return `${baseUrl}/order/${orderPublicId}`;
+  if (!orderPublicId.startsWith("ord_")) return `${baseUrl}/order/${orderPublicId}`;
   const access = await getGuestAccess(db, orderPublicId);
   return access ? `${baseUrl}/order/${access.access_token}` : null;
 }

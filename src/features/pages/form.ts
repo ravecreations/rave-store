@@ -1,4 +1,4 @@
-import { normalizePageLayout, type PageLayout } from './layouts.ts';
+import { normalizePageLayout, type PageLayout } from "./layouts.ts";
 
 const MAX_TITLE = 120;
 const MAX_BODY = 100_000;
@@ -18,13 +18,13 @@ export interface PageFields {
  * user-facing message, matching parseProductForm's shape.
  */
 export function parsePageForm(form: FormData): { data: PageFields } | { error: string } {
-  const title = String(form.get('title') ?? '').trim();
-  if (!title) return { error: 'Title is required.' };
+  const title = String(form.get("title") ?? "").trim();
+  if (!title) return { error: "Title is required." };
   if (title.length > MAX_TITLE) {
     return { error: `Title must be ${MAX_TITLE} characters or fewer.` };
   }
 
-  const body = String(form.get('body_markdown') ?? '');
+  const body = String(form.get("body_markdown") ?? "");
   if (body.length > MAX_BODY) {
     return { error: `Page content must be ${MAX_BODY.toLocaleString()} characters or fewer.` };
   }
@@ -32,11 +32,11 @@ export function parsePageForm(form: FormData): { data: PageFields } | { error: s
   return {
     data: {
       title,
-      slug: String(form.get('slug') ?? '').trim(),
+      slug: String(form.get("slug") ?? "").trim(),
       body_markdown: body,
       // Checkbox: present = on. Any other truthy encoding ('1', 'true') also works.
-      published: form.get('published') ? 1 : 0,
-      layout: normalizePageLayout(form.get('layout')),
+      published: form.get("published") ? 1 : 0,
+      layout: normalizePageLayout(form.get("layout")),
     },
   };
 }

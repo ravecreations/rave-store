@@ -1,6 +1,6 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import type { Product } from './db';
-import { normalizeSearchQuery } from '../search/query';
+import type { D1Database } from "@cloudflare/workers-types";
+import type { Product } from "./db";
+import { normalizeSearchQuery } from "../search/query";
 
 /**
  * Turn raw user input into a safe FTS5 MATCH query. FTS5 throws a syntax error
@@ -9,14 +9,16 @@ import { normalizeSearchQuery } from '../search/query';
  * when there's nothing searchable.
  */
 export function toFtsQuery(raw: string): string | null {
-  const tokens = normalizeSearchQuery(raw).toLowerCase().match(/[a-z0-9]+/g);
+  const tokens = normalizeSearchQuery(raw)
+    .toLowerCase()
+    .match(/[a-z0-9]+/g);
   if (!tokens || tokens.length === 0) return null;
   // Space-joined terms are ANDed by FTS5; trailing * makes each a prefix match.
-  return tokens.map((t) => `${t}*`).join(' ');
+  return tokens.map((t) => `${t}*`).join(" ");
 }
 
 function exclusionSql(ids: number[]): string {
-  return ids.length > 0 ? ` AND p.id NOT IN (${ids.map(() => '?').join(',')})` : '';
+  return ids.length > 0 ? ` AND p.id NOT IN (${ids.map(() => "?").join(",")})` : "";
 }
 
 /** Count active FTS matches, optionally excluding results supplied elsewhere. */
@@ -86,11 +88,11 @@ export function editDistance(a: string, b: string): number {
 /** Distinct ≥3-char words from active products' name + description. */
 async function productVocabulary(db: D1Database): Promise<string[]> {
   const { results } = await db
-    .prepare('SELECT name, description FROM products WHERE active = 1')
+    .prepare("SELECT name, description FROM products WHERE active = 1")
     .all<{ name: string; description: string | null }>();
   const words = new Set<string>();
   for (const r of results ?? []) {
-    const matches = `${r.name} ${r.description ?? ''}`.toLowerCase().match(/[a-z0-9]+/g);
+    const matches = `${r.name} ${r.description ?? ""}`.toLowerCase().match(/[a-z0-9]+/g);
     for (const w of matches ?? []) if (w.length >= 3) words.add(w);
   }
   return [...words];
@@ -128,5 +130,5 @@ export async function suggestQuery(db: D1Database, raw: string): Promise<string 
     return tok;
   });
 
-  return changed ? corrected.join(' ') : null;
+  return changed ? corrected.join(" ") : null;
 }

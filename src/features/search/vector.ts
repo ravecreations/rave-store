@@ -1,8 +1,8 @@
-import { markdownExcerpt } from '../pages/markdown.ts';
-import type { Ai, D1Database, VectorizeIndex } from '@cloudflare/workers-types';
-import type { SearchProvider, SearchResult } from './provider';
-import { getProductsByIds, type Product } from '../products/db';
-import { normalizeSearchQuery } from './query';
+import { markdownExcerpt } from "../pages/markdown.ts";
+import type { Ai, D1Database, VectorizeIndex } from "@cloudflare/workers-types";
+import type { SearchProvider, SearchResult } from "./provider";
+import { getProductsByIds, type Product } from "../products/db";
+import { normalizeSearchQuery } from "./query";
 
 /**
  * Embed text with a Workers AI embedding model → a vector. The bge models return
@@ -11,12 +11,11 @@ import { normalizeSearchQuery } from './query';
  */
 export async function embedText(ai: Ai, model: string, text: string): Promise<number[]> {
   // The model id is a string literal in the binding's overloads; cast through.
-  const res = (await (ai as unknown as { run: (m: string, i: { text: string[] }) => Promise<unknown> }).run(
-    model,
-    { text: [text] },
-  )) as { data?: number[][] };
+  const res = (await (
+    ai as unknown as { run: (m: string, i: { text: string[] }) => Promise<unknown> }
+  ).run(model, { text: [text] })) as { data?: number[][] };
   const vector = res.data?.[0];
-  if (!vector || vector.length === 0) throw new Error('embedding failed: empty response');
+  if (!vector || vector.length === 0) throw new Error("embedding failed: empty response");
   return vector;
 }
 
@@ -33,8 +32,8 @@ export function productEmbedText(
   const parts = [p.name];
   // Embed the prose, not the Markdown punctuation.
   if (p.description) parts.push(markdownExcerpt(p.description, 5000));
-  if (categoryNames.length > 0) parts.push(`Categories: ${categoryNames.join(', ')}`);
-  return parts.join('\n');
+  if (categoryNames.length > 0) parts.push(`Categories: ${categoryNames.join(", ")}`);
+  return parts.join("\n");
 }
 
 /**
@@ -43,7 +42,7 @@ export function productEmbedText(
  * side aligns the two and spreads similarity scores apart (relevant high,
  * off-topic low), so MIN_SCORE can meaningfully reject junk queries.
  */
-const QUERY_INSTRUCTION = 'Represent this sentence for searching relevant passages: ';
+const QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: ";
 
 /**
  * Minimum cosine similarity a match must clear to count as a result. Without this,

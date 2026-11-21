@@ -1,11 +1,11 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database } from "@cloudflare/workers-types";
 import type {
   PaymentProvider,
   CreateCheckoutParams,
   CheckoutResult,
   WebhookResult,
-} from './provider';
-import { createPendingPayment } from './lightning/pending';
+} from "./provider";
+import { createPendingPayment } from "./lightning/pending";
 
 export const DEMO_CHECKOUT_TTL_SECONDS = 24 * 60 * 60;
 
@@ -31,11 +31,11 @@ export function createDemoProvider(db: D1Database): PaymentProvider {
       await createPendingPayment(db, {
         publicId,
         paymentHash: `demo_${publicId}`, // satisfies the table's unique session id
-        backend: 'demo',
+        backend: "demo",
         bolt11: null,
         amountSat: null,
         amountTotalCents: subtotal + shippingCents,
-        currency: params.lineItems[0]?.currency ?? 'usd',
+        currency: params.lineItems[0]?.currency ?? "usd",
         email: params.selectedShipping?.email ?? null,
         itemsJson: params.orderItemsJson ?? null,
         shippingCents,
@@ -59,7 +59,7 @@ export function createDemoProvider(db: D1Database): PaymentProvider {
 
     async verifyWebhook(): Promise<WebhookResult> {
       // Demo settles in-page (see /pay) — there is no external webhook.
-      throw new Error('Demo provider has no webhook.');
+      throw new Error("Demo provider has no webhook.");
     },
   };
 }

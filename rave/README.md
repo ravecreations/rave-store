@@ -3,6 +3,7 @@
 Everything RAVE-specific is isolated so upstream ([ddyy/minshop](https://github.com/ddyy/minshop)) can be merged in.
 
 **Store-owned (upstream never edits these):**
+
 - `src/themes/ravecreations-store/` — the RAVE theme (tokens, header, footer, cards, `site.ts` links back to ravecreations.art)
 - `src/store.config.ts` — name, time zone, shipping defaults
 - `theme.config.json`, `src/styles/overrides.css`
@@ -11,6 +12,7 @@ Everything RAVE-specific is isolated so upstream ([ddyy/minshop](https://github.
 - `test/scripts/rave.test.mjs`
 
 **Small edits to upstream files (expect rare conflicts):**
+
 - `wrangler.jsonc` — Worker/D1/R2 names (`ravecreations-store*`)
 - `astro.config.mjs`, `scripts/check-themes.mjs` — Windows path fixes (each one commit; drop if upstream fixes them)
 - `create-minshop/` is deleted (scaffold artifact)

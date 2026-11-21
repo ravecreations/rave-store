@@ -1,7 +1,7 @@
-import type { Product } from '../products/db';
-import type { ProductVariant, ProductExtra } from '../products/variants';
-import { productImageUrl } from '../products/image';
-import { toMajorUnits } from '../../money';
+import type { Product } from "../products/db";
+import type { ProductVariant, ProductExtra } from "../products/variants";
+import { productImageUrl } from "../products/image";
+import { toMajorUnits } from "../../money";
 
 /** A purchasable variant in catalog form (price in both major + minor units). */
 export interface CatalogVariant {
@@ -75,7 +75,7 @@ export function toCatalogProduct(
   const hasVariants = !!variants && variants.length > 0;
 
   const out: CatalogProduct = {
-    id: requirePublicId(p.public_id, p.id, 'product'),
+    id: requirePublicId(p.public_id, p.id, "product"),
     slug: p.slug,
     name: p.name,
     description: p.description,
@@ -84,13 +84,13 @@ export function toCatalogProduct(
     in_stock: hasVariants ? variants!.some((v) => v.stock > 0) : p.stock > 0,
     variant_label: p.variant_label,
     categories: categoryNames,
-    image: new URL(productImageUrl(p.image_key, options?.imageBaseUrl ?? ''), origin).href,
+    image: new URL(productImageUrl(p.image_key, options?.imageBaseUrl ?? ""), origin).href,
     url: new URL(`/products/${p.slug}`, origin).href,
   };
 
   if (variants) {
     out.variants = variants.map((v) => ({
-      id: requirePublicId(v.public_id, v.id, 'variant'),
+      id: requirePublicId(v.public_id, v.id, "variant"),
       label: v.label,
       price: money(v.price_cents, p.currency),
       in_stock: v.stock > 0,
@@ -99,7 +99,7 @@ export function toCatalogProduct(
   }
   if (extras) {
     out.extras = extras.map((e) => ({
-      id: requirePublicId(e.public_id, e.id, 'extra'),
+      id: requirePublicId(e.public_id, e.id, "extra"),
       label: e.label,
       price_delta: money(e.price_delta_cents, p.currency),
     }));

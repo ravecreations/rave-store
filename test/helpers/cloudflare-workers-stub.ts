@@ -12,6 +12,6 @@ export const env = {} as Record<string, unknown>;
 // accidental un-injected runtime call fail loudly in plain Node.
 export const cache = {
   purge(): never {
-    throw new Error('Workers cache is unavailable in unit tests.');
+    throw new Error("Workers cache is unavailable in unit tests.");
   },
 };

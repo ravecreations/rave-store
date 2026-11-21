@@ -1,4 +1,4 @@
-import { readBoundedText } from '../http/requestBody';
+import { readBoundedText } from "../http/requestBody";
 
 const PUBLIC_TENANT_KEY_HEADER = "x-r5i-public-key";
 const PUBLIC_KEY_PATTERN = /^pk_[A-Za-z0-9_-]{32,128}$/;
@@ -60,7 +60,5 @@ export async function tenantApiFetch(
     redirect: "manual",
   });
 
-  return env.API_SERVICE
-    ? env.API_SERVICE.fetch(forwarded)
-    : fetch(forwarded);
+  return env.API_SERVICE ? env.API_SERVICE.fetch(forwarded) : fetch(forwarded);
 }

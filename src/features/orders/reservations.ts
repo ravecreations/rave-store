@@ -1,15 +1,12 @@
-import type { D1Database } from '@cloudflare/workers-types';
-import {
-  visibleStockChanged,
-  type StockTransitionPurger,
-} from '../products/stock.ts';
-import type { OrderItemInput } from './db';
-import { generatePublicId, isPublicIdConflict } from '../ids/publicId.ts';
+import type { D1Database } from "@cloudflare/workers-types";
+import { visibleStockChanged, type StockTransitionPurger } from "../products/stock.ts";
+import type { OrderItemInput } from "./db";
+import { generatePublicId, isPublicIdConflict } from "../ids/publicId.ts";
 import {
   DIGITAL_DELIVERY_RELEASE,
   lifecycleActive,
   type DigitalDeliveryRelease,
-} from '../digitalDelivery/rollout.ts';
+} from "../digitalDelivery/rollout.ts";
 
 export interface ReservationItem extends OrderItemInput {
   productId: number;
@@ -21,12 +18,12 @@ export interface ReservationItem extends OrderItemInput {
 }
 
 export type ReservationStatus =
-  | 'active'
-  | 'payment_pending'
-  | 'settled'
-  | 'released'
-  | 'expired'
-  | 'failed';
+  | "active"
+  | "payment_pending"
+  | "settled"
+  | "released"
+  | "expired"
+  | "failed";
 
 interface ReservationRow {
   public_id: string;
@@ -79,12 +76,14 @@ function parseItems(value: string): ReservationItem[] | null {
           !Number.isInteger(item.priceCents) ||
           item.priceCents < 0 ||
           (item.variantId != null && (!Number.isInteger(item.variantId) || item.variantId < 1)) ||
-          (item.publicId != null && (typeof item.publicId !== 'string' || !item.publicId.startsWith('itm_'))) ||
-          (item.fileKey != null && typeof item.fileKey !== 'string') ||
-          (item.fileName != null && typeof item.fileName !== 'string') ||
-          (item.fileMime != null && typeof item.fileMime !== 'string') ||
-          (item.fileSizeBytes != null && (!Number.isInteger(item.fileSizeBytes) || item.fileSizeBytes < 0)) ||
-          typeof item.name !== 'string',
+          (item.publicId != null &&
+            (typeof item.publicId !== "string" || !item.publicId.startsWith("itm_"))) ||
+          (item.fileKey != null && typeof item.fileKey !== "string") ||
+          (item.fileName != null && typeof item.fileName !== "string") ||
+          (item.fileMime != null && typeof item.fileMime !== "string") ||
+          (item.fileSizeBytes != null &&
+            (!Number.isInteger(item.fileSizeBytes) || item.fileSizeBytes < 0)) ||
+          typeof item.name !== "string",
       )
     ) {
       return null;
@@ -97,7 +96,9 @@ function parseItems(value: string): ReservationItem[] | null {
 
 async function getReservation(db: D1Database, publicId: string): Promise<ReservationRow | null> {
   return db
-    .prepare('SELECT public_id, items, status, expires_at, terminal_at FROM checkout_reservations WHERE public_id = ?')
+    .prepare(
+      "SELECT public_id, items, status, expires_at, terminal_at FROM checkout_reservations WHERE public_id = ?",
+    )
     .bind(publicId)
     .first<ReservationRow>();
 }
@@ -107,7 +108,7 @@ const ITEM_ID_LOOKUP_CHUNK = 40;
 async function hasClaimedItemId(db: D1Database, publicIds: string[]): Promise<boolean> {
   for (let offset = 0; offset < publicIds.length; offset += ITEM_ID_LOOKUP_CHUNK) {
     const chunk = publicIds.slice(offset, offset + ITEM_ID_LOOKUP_CHUNK);
-    const placeholders = chunk.map(() => '?').join(',');
+    const placeholders = chunk.map(() => "?").join(",");
     const existing = await db
       .prepare(
         `SELECT public_id FROM order_items WHERE public_id IN (${placeholders})
@@ -126,14 +127,14 @@ async function publicIdsForProducts(
 ): Promise<string[]> {
   const ids = [...new Set(productIds)];
   if (ids.length === 0) return [];
-  const placeholders = ids.map(() => '?').join(',');
+  const placeholders = ids.map(() => "?").join(",");
   const { results } = await db
     .prepare(`SELECT id, public_id FROM products WHERE id IN (${placeholders})`)
     .bind(...ids)
     .all<ProductPublicIdRow>();
   return (results ?? [])
     .map((row) => row.public_id)
-    .filter((publicId): publicId is string => typeof publicId === 'string');
+    .filter((publicId): publicId is string => typeof publicId === "string");
 }
 
 async function purgeTransitions(
@@ -149,10 +150,10 @@ async function purgeTransitions(
 async function releaseReservation(
   db: D1Database,
   publicId: string,
-  terminalStatus: 'released' | 'expired' | 'failed' = 'released',
+  terminalStatus: "released" | "expired" | "failed" = "released",
 ): Promise<{ released: boolean; changedProductIds: number[] }> {
   const row = await getReservation(db, publicId);
-  if (!row || (row.status !== 'active' && row.status !== 'payment_pending')) {
+  if (!row || (row.status !== "active" && row.status !== "payment_pending")) {
     return { released: false, changedProductIds: [] };
   }
   const items = parseItems(row.items);
@@ -190,7 +191,7 @@ async function releaseReservation(
 
   const changedProductIds = targets.flatMap((target, index) => {
     const after = results[index]?.results[0]?.stock;
-    return typeof after === 'number' &&
+    return typeof after === "number" &&
       visibleStockChanged(target.variantId != null, after - target.quantity, after)
       ? [target.productId]
       : [];
@@ -213,10 +214,10 @@ export async function releaseInventoryReservation(
 export async function markInventoryReservationTerminal(
   db: D1Database,
   publicId: string,
-  status: 'expired' | 'failed',
+  status: "expired" | "failed",
   purger?: StockTransitionPurger,
 ): Promise<boolean> {
-  const result = await releaseReservation(db, publicId, lifecycleActive() ? status : 'released');
+  const result = await releaseReservation(db, publicId, lifecycleActive() ? status : "released");
   await purgeTransitions(db, result.changedProductIds, purger);
   return result.released;
 }
@@ -242,7 +243,7 @@ export async function releaseExpiredReservations(
     const released = await releaseReservation(
       db,
       row.public_id,
-      lifecycleActive() ? 'expired' : 'released',
+      lifecycleActive() ? "expired" : "released",
     );
     changedProductIds.push(...released.changedProductIds);
   }
@@ -267,7 +268,7 @@ export async function expireSelfRenderedReservation(
   const released = await releaseReservation(
     db,
     publicId,
-    lifecycleActive() ? 'expired' : 'released',
+    lifecycleActive() ? "expired" : "released",
   );
   await purgeTransitions(db, released.changedProductIds, purger);
   return released.released;
@@ -283,7 +284,7 @@ export async function reserveInventory(
   publicId: string,
   items: ReservationItem[],
   ttlSeconds: number,
-  paymentMethod: 'stripe' | 'opennode' | 'lightning' | 'demo',
+  paymentMethod: "stripe" | "opennode" | "lightning" | "demo",
   purger?: StockTransitionPurger,
   release: DigitalDeliveryRelease = DIGITAL_DELIVERY_RELEASE,
 ): Promise<boolean> {
@@ -293,23 +294,27 @@ export async function reserveInventory(
   const targets = aggregateStockTargets(items);
   // Use one bind for the entire stock check so a 50-line checkout stays inside
   // D1's parameter limit while keeping the hold and stock checks atomic.
-  const stockTargets = JSON.stringify(targets.map(({ productId, variantId, quantity }) =>
-    [productId, variantId, quantity],
-  ));
+  const stockTargets = JSON.stringify(
+    targets.map(({ productId, variantId, quantity }) => [productId, variantId, quantity]),
+  );
 
-  let results: D1Result<(StockUpdateRow & { public_id?: string })>[] | null = null;
+  let results: D1Result<StockUpdateRow & { public_id?: string }>[] | null = null;
   let claimedItems: ReservationItem[] = [];
   let claimStatementCount = 0;
   for (let attempt = 0; attempt < 3; attempt++) {
     claimedItems = items.map((item) => ({
       ...item,
-      publicId: item.publicId ?? (lifecycleActive(release) ? generatePublicId('orderItem') : undefined),
+      publicId:
+        item.publicId ?? (lifecycleActive(release) ? generatePublicId("orderItem") : undefined),
     }));
 
     // Transitional guard while historical order-item IDs are being registered.
     if (
       lifecycleActive(release) &&
-      (await hasClaimedItemId(db, claimedItems.map((item) => item.publicId!)))
+      (await hasClaimedItemId(
+        db,
+        claimedItems.map((item) => item.publicId!),
+      ))
     ) {
       items = items.map((item) => ({ ...item, publicId: undefined }));
       continue;
@@ -336,20 +341,28 @@ export async function reserveInventory(
          ON CONFLICT(public_id) DO NOTHING
          RETURNING public_id`,
       )
-      .bind(publicId, JSON.stringify(claimedItems), paymentMethod, `+${ttlSeconds} seconds`, stockTargets);
+      .bind(
+        publicId,
+        JSON.stringify(claimedItems),
+        paymentMethod,
+        `+${ttlSeconds} seconds`,
+        stockTargets,
+      );
     // Release 1 writes no claims, so the decrement results sit at a different
     // offset there. Index off the statements actually batched, never off the
     // item count — getting this wrong silently skips every stock purge.
-    const claims = lifecycleActive(release) ? claimedItems.map((item) =>
-      db
-        .prepare(
-          `INSERT INTO order_item_ids (public_id, order_public_id)
+    const claims = lifecycleActive(release)
+      ? claimedItems.map((item) =>
+          db
+            .prepare(
+              `INSERT INTO order_item_ids (public_id, order_public_id)
            SELECT ?, ? WHERE EXISTS (
              SELECT 1 FROM checkout_reservations WHERE public_id = ? AND status = 'active'
            )`,
+            )
+            .bind(item.publicId, publicId, publicId),
         )
-        .bind(item.publicId, publicId, publicId),
-    ) : [];
+      : [];
     claimStatementCount = claims.length;
     const activeGuard =
       "EXISTS (SELECT 1 FROM checkout_reservations WHERE public_id = ? AND status = 'active')";
@@ -367,20 +380,24 @@ export async function reserveInventory(
             .bind(target.quantity, target.variantId, publicId),
     );
     try {
-      results = await db.batch<StockUpdateRow & { public_id?: string }>([insert, ...claims, ...decrements]);
+      results = await db.batch<StockUpdateRow & { public_id?: string }>([
+        insert,
+        ...claims,
+        ...decrements,
+      ]);
       break;
     } catch (err) {
       if (!isPublicIdConflict(err)) throw err;
       items = items.map((item) => ({ ...item, publicId: undefined }));
     }
   }
-  if (!results) throw new Error('order item identity collision retry exhausted');
+  if (!results) throw new Error("order item identity collision retry exhausted");
   const reserved = Boolean(results[0]?.results[0]);
   if (!reserved) return false;
 
   const changedProductIds = targets.flatMap((target, index) => {
     const after = results[index + 1 + claimStatementCount]?.results[0]?.stock;
-    return typeof after === 'number' &&
+    return typeof after === "number" &&
       visibleStockChanged(target.variantId != null, after + target.quantity, after)
       ? [target.productId]
       : [];
@@ -395,7 +412,7 @@ export async function getActiveReservationItems(
   publicId: string,
 ): Promise<ReservationItem[] | null> {
   const row = await getReservation(db, publicId);
-  return row && (row.status === 'active' || row.status === 'payment_pending')
+  return row && (row.status === "active" || row.status === "payment_pending")
     ? parseItems(row.items)
     : null;
 }
@@ -411,7 +428,7 @@ export async function getSettlementReservation(
   publicId: string,
 ): Promise<SettlementReservation | null> {
   const row = await getReservation(db, publicId);
-  if (!row || !['active', 'payment_pending', 'expired', 'failed'].includes(row.status)) return null;
+  if (!row || !["active", "payment_pending", "expired", "failed"].includes(row.status)) return null;
   const items = parseItems(row.items);
   return items ? { items, status: row.status } : null;
 }

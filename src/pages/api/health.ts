@@ -1,5 +1,5 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
@@ -12,16 +12,16 @@ export const prerender = false;
  */
 export const GET: APIRoute = async () => {
   const started = Date.now();
-  let db: 'ok' | 'down' = 'ok';
+  let db: "ok" | "down" = "ok";
   try {
-    await env.DB.prepare('SELECT 1').first();
+    await env.DB.prepare("SELECT 1").first();
   } catch {
-    db = 'down';
+    db = "down";
   }
-  const healthy = db === 'ok';
+  const healthy = db === "ok";
   return new Response(
     JSON.stringify({
-      status: healthy ? 'ok' : 'error',
+      status: healthy ? "ok" : "error",
       db,
       latency_ms: Date.now() - started,
       time: new Date().toISOString(),
@@ -29,8 +29,8 @@ export const GET: APIRoute = async () => {
     {
       status: healthy ? 200 : 503,
       headers: {
-        'content-type': 'application/json; charset=utf-8',
-        'cache-control': 'no-store',
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
       },
     },
   );

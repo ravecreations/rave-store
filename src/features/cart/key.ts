@@ -12,7 +12,7 @@
  * Extras are de-duped + sorted so the same selection always yields the same key.
  * Legacy numeric keys are NOT parsed — they fail validation and the line drops.
  */
-import { parsePublicId } from '../ids/publicId.ts';
+import { parsePublicId } from "../ids/publicId.ts";
 
 export interface ParsedKey {
   productPublicId: string;
@@ -22,7 +22,9 @@ export interface ParsedKey {
 
 /** Canonical extras list: valid xtra_ IDs only, de-duped, sorted lexicographically. */
 const canonicalExtras = (xs: string[]): string[] =>
-  [...new Set(xs.map((x) => parsePublicId(x, 'extra')).filter((x): x is string => x !== null))].sort();
+  [
+    ...new Set(xs.map((x) => parsePublicId(x, "extra")).filter((x): x is string => x !== null)),
+  ].sort();
 
 /** Build the canonical cart key for a product + optional variant + extras. */
 export function cartKey(
@@ -33,29 +35,29 @@ export function cartKey(
   let key = productPublicId;
   if (variantPublicId) key += `:${variantPublicId}`;
   const ex = canonicalExtras(extraPublicIds);
-  if (ex.length) key += `#${ex.join(',')}`;
+  if (ex.length) key += `#${ex.join(",")}`;
   return key;
 }
 
 /** Parse a cart key back to its parts, or null if ANY part is malformed (never trust cookies). */
 export function parseCartKey(key: string): ParsedKey | null {
-  const [left, extrasPart, spill] = key.split('#');
+  const [left, extrasPart, spill] = key.split("#");
   if (spill !== undefined) return null; // more than one '#' → malformed
-  const [pidStr, vidStr, extra] = left.split(':');
+  const [pidStr, vidStr, extra] = left.split(":");
   if (extra !== undefined) return null; // more than one ':' → malformed
 
-  const productPublicId = parsePublicId(pidStr, 'product');
+  const productPublicId = parsePublicId(pidStr, "product");
   if (!productPublicId) return null;
 
   let variantPublicId: string | null = null;
   if (vidStr !== undefined) {
-    variantPublicId = parsePublicId(vidStr, 'variant');
+    variantPublicId = parsePublicId(vidStr, "variant");
     if (!variantPublicId) return null;
   }
 
   let extraPublicIds: string[] = [];
   if (extrasPart !== undefined) {
-    const parts = extrasPart.split(',');
+    const parts = extrasPart.split(",");
     extraPublicIds = canonicalExtras(parts);
     if (extraPublicIds.length !== new Set(parts).size) return null; // any invalid extra → reject
     if (extraPublicIds.length === 0) return null; // bare '#' → malformed

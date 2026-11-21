@@ -1,16 +1,16 @@
-import type { APIRoute } from 'astro';
-import { env } from 'cloudflare:workers';
+import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 import {
   countAllProducts,
   getProductByPublicId,
   listProductsAfterId,
-} from '../../../../features/products/db';
-import { indexProducts } from '../../../../features/search';
-import { getConfig } from '../../../../config';
-import { getStoreSettings } from '../../../../features/settings/db';
-import { parsePublicId } from '../../../../features/ids/publicId';
-import { CACHE_TAG } from '../../../../features/cache/tags';
-import { purgeCacheTags } from '../../../../features/cache/purge';
+} from "../../../../features/products/db";
+import { indexProducts } from "../../../../features/search";
+import { getConfig } from "../../../../config";
+import { getStoreSettings } from "../../../../features/settings/db";
+import { parsePublicId } from "../../../../features/ids/publicId";
+import { CACHE_TAG } from "../../../../features/cache/tags";
+import { purgeCacheTags } from "../../../../features/cache/purge";
 
 export const prerender = false;
 
@@ -33,38 +33,36 @@ function nonNegativeInteger(value: FormDataEntryValue | null): number {
 // stays on the integer id internally.
 export const POST: APIRoute = async ({ request, redirect }) => {
   const wantsJson =
-    request.headers.get('x-requested-with') === 'fetch' ||
-    request.headers.get('accept')?.includes('application/json');
+    request.headers.get("x-requested-with") === "fetch" ||
+    request.headers.get("accept")?.includes("application/json");
   const back = (msg: string, cursor: string | null = null, processed = 0) => {
     const query = new URLSearchParams({ msg });
     if (cursor) {
-      query.set('reindex_cursor', cursor);
-      query.set('reindex_processed', String(processed));
+      query.set("reindex_cursor", cursor);
+      query.set("reindex_processed", String(processed));
     }
     return redirect(`/admin/settings?${query.toString()}#search`, 303);
   };
   const fail = (message: string, status = 400) =>
-    wantsJson
-      ? Response.json({ error: message }, { status })
-      : back(message);
+    wantsJson ? Response.json({ error: message }, { status }) : back(message);
 
   const settings = await getStoreSettings(env.DB);
   const provider = settings.searchProvider ?? getConfig().search.provider;
-  if (provider !== 'vector') {
-    return fail('Semantic search is off — enable it in Settings first.');
+  if (provider !== "vector") {
+    return fail("Semantic search is off — enable it in Settings first.");
   }
   if (!env.AI || !env.VECTORIZE) {
-    return fail('Semantic search is unavailable — add the AI and VECTORIZE bindings first.');
+    return fail("Semantic search is unavailable — add the AI and VECTORIZE bindings first.");
   }
 
   const form = await request.formData();
   // Resolve the public-ID cursor to the internal keyset id. A cursor whose
   // product has since been deleted restarts from the top — indexing is
   // idempotent, so a repeat costs time, never correctness.
-  const cursorPublicId = parsePublicId(form.get('cursor'), 'product');
+  const cursorPublicId = parsePublicId(form.get("cursor"), "product");
   const cursorProduct = cursorPublicId ? await getProductByPublicId(env.DB, cursorPublicId) : null;
   const cursor = cursorProduct?.id ?? 0;
-  const processedBefore = nonNegativeInteger(form.get('processed'));
+  const processedBefore = nonNegativeInteger(form.get("processed"));
 
   try {
     // Fetch one extra row to know whether another request is needed without a

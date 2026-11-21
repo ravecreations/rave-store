@@ -1,17 +1,17 @@
-import { cache } from 'cloudflare:workers';
-import { normalizeCacheTags, productCacheTags } from './tags';
+import { cache } from "cloudflare:workers";
+import { normalizeCacheTags, productCacheTags } from "./tags";
 
 export interface CachePurger {
   purge(options: CachePurgeOptions): Promise<CachePurgeResult>;
 }
 
 function purgeFailure(
-  mode: 'tags' | 'stock-tags' | 'everything',
+  mode: "tags" | "stock-tags" | "everything",
   errors: CachePurgeError[] | unknown,
 ): void {
   console.error(
     JSON.stringify({
-      event: 'workers_cache_purge_failed',
+      event: "workers_cache_purge_failed",
       mode,
       errors,
     }),
@@ -33,20 +33,20 @@ export async function purgeCacheTags(
   try {
     const result = await purger.purge({ tags: normalized });
     if (result.success) return;
-    purgeFailure('tags', result.errors);
+    purgeFailure("tags", result.errors);
   } catch (error) {
-    purgeFailure('tags', error instanceof Error ? error.message : String(error));
+    purgeFailure("tags", error instanceof Error ? error.message : String(error));
   }
 
   try {
     const fallback = await purger.purge({ purgeEverything: true });
     if (fallback.success) return;
-    purgeFailure('everything', fallback.errors);
+    purgeFailure("everything", fallback.errors);
   } catch (error) {
-    purgeFailure('everything', error instanceof Error ? error.message : String(error));
+    purgeFailure("everything", error instanceof Error ? error.message : String(error));
   }
 
-  throw new Error('The data was saved, but the Workers cache could not be invalidated.');
+  throw new Error("The data was saved, but the Workers cache could not be invalidated.");
 }
 
 export function purgeProductCache(
@@ -57,17 +57,15 @@ export function purgeProductCache(
 }
 
 /** Purge the owning Worker entrypoint's complete cache after a deployment. */
-export async function purgeEntireCache(
-  purger: CachePurger = cache,
-): Promise<void> {
+export async function purgeEntireCache(purger: CachePurger = cache): Promise<void> {
   try {
     const result = await purger.purge({ purgeEverything: true });
     if (result.success) return;
-    purgeFailure('everything', result.errors);
+    purgeFailure("everything", result.errors);
   } catch (error) {
-    purgeFailure('everything', error instanceof Error ? error.message : String(error));
+    purgeFailure("everything", error instanceof Error ? error.message : String(error));
   }
-  throw new Error('The Workers cache could not be purged.');
+  throw new Error("The Workers cache could not be purged.");
 }
 
 /**
@@ -85,8 +83,8 @@ export async function purgeStockProductCache(
   try {
     const result = await purger.purge({ tags });
     if (result.success) return;
-    purgeFailure('stock-tags', result.errors);
+    purgeFailure("stock-tags", result.errors);
   } catch (error) {
-    purgeFailure('stock-tags', error instanceof Error ? error.message : String(error));
+    purgeFailure("stock-tags", error instanceof Error ? error.message : String(error));
   }
 }

@@ -8,9 +8,9 @@
  * shopper choose their own shipping band.
  */
 
-import type { Product } from '../products/db';
-import type { ProductVariant } from '../products/variants';
-import { resolveShipmentWeight, type ResolvedShipmentWeight, type WeightLine } from './weight';
+import type { Product } from "../products/db";
+import type { ProductVariant } from "../products/variants";
+import { resolveShipmentWeight, type ResolvedShipmentWeight, type WeightLine } from "./weight";
 
 export interface CheckoutLineLike {
   product: Product;

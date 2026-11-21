@@ -88,7 +88,7 @@ export interface StorefrontSortOption {
   href: string;
   current: boolean;
   /** Direction currently applied, on the current option only. */
-  direction: 'asc' | 'desc' | null;
+  direction: "asc" | "desc" | null;
 }
 
 export interface StorefrontSortModel {
