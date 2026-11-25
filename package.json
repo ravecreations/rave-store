@@ -45,15 +45,15 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
-    "@cloudflare/workers-types": "^5.20261124.1",
+    "@cloudflare/workers-types": "^5.20261125.1",
     "@tailwindcss/vite": "^4.3.5",
     "@types/markdown-it": "^14.2.0",
-    "@types/node": "^26.6.6",
+    "@types/node": "^26.6.10",
     "miniflare": "^4.20260730.0",
     "tailwindcss": "^4.3.5",
     "typescript": "^6.0.3",
-    "vitest": "^5.1.1",
-    "wrangler": "^4.167.0"
+    "vitest": "^5.1.2",
+    "wrangler": "^4.168.0"
   },
   "overrides": {
     "miniflare": {
